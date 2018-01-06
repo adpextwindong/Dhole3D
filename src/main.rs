@@ -7,20 +7,22 @@ use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use std::time::Duration;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::surface::Surface;
 
-use sdl2_window::Sdl2Window;
+//use sdl2_window::Sdl2Window;
 use sdl2::surface;
 use sdl2::video::Window;
 use sdl2::render::Canvas;
-use sdl2::rect;
+//use sdl2::rect;
 
-use window::WindowSettings;
+//use window::WindowSettings;
 
 //TODO_FAR opengl?
 //use shader_version::OpenGL;
+
+use std::f32;
+use std::time::{Duration, Instant};
 
 
 
@@ -45,10 +47,11 @@ pub struct MapGrip {
 
 #[derive(Copy, Clone)]
 struct Vec2 {
-    x: i32,
-    y: i32,
+    x: f32,
+    y: f32,
 }
 
+#[derive(Copy, Clone)]
 struct Player {
     pos : Vec2, //Their position in the world
     dir : Vec2  //Direction their facing
@@ -62,12 +65,14 @@ const GREEN : Color = Color{r: 0, g:255 ,b: 0, a: 255};
 const BLUE : Color = Color{r: 0, g:0 ,b: 255, a: 255};
 
 const FLOOR_GREY : Color = Color{r : 128, g: 128, b: 128, a: 255};
-const CEILING_BLACK : sdl2::pixels::Color = Color{r : 0, g: 0, b: 0, a: 255};
+const CEILING_BLACK : Color = Color{r : 0, g: 0, b: 0, a: 255};
 
 //WORLD CONSTANTS
 //TODO make this flexible for loading seperate worlds
-const WORLD_SIZE_X : u32 = 64;
-const WORLD_SIZE_Y : u32 = 64;
+const WORLD_SIZE_X : u32 = 10;
+const WORLD_SIZE_Y : u32 = 10;
+
+const WORLD_CELL_SIZE : u32 = 10; // 10 Meters?
 
 //TODO make this a startup option or something
 const SCREEN_SIZE_X : u32 = 800;
@@ -77,7 +82,7 @@ const SCREEN_SIZE_Y : u32 = 600;
 //TODO Add filepath option or make an INTO/FROM for a load source
 fn gen_blank_world(x: u32, y:u32) -> Vec<Vec<Wall>> {
     let mut ret = Vec::new();
-    let reg_wall = Wall {full:true, color: Color{r: 128, g: 128, b: 128, a:255}};
+    let reg_wall = Wall {full:true, color: NULL_COLOR};
     for _ in 0..y {
         let mut w = Vec::<Wall>::with_capacity(x as usize);
         for _ in 0..x {
@@ -85,6 +90,7 @@ fn gen_blank_world(x: u32, y:u32) -> Vec<Vec<Wall>> {
         }
         ret.push(w);
     }
+
 
     return ret;
 }
@@ -100,13 +106,14 @@ fn draw_ceiling(canvas : &mut Canvas<Window>) {
 
 fn draw_floor(canvas : &mut Canvas<Window>) {
     canvas.set_draw_color(FLOOR_GREY);
-// A draw a rectangle which almost fills our window with it !
     let pos_y =  SCREEN_SIZE_Y as i32 /2;
     let size_y = SCREEN_SIZE_Y as i32 /2;
-    canvas.fill_rect(Rect::new(0, pos_y, SCREEN_SIZE_X, size_y as u32));
+    canvas.fill_rect(Rect::new(0, pos_y, SCREEN_SIZE_X, size_y as u32)).unwrap();
 }
 
-
+fn debug_print_player(p: Player){
+    println!("POS: {} {} DIR: {} {}", p.pos.x, p.pos.y, p.dir.x, p.dir.y);
+}
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -122,9 +129,19 @@ pub fn main() {
     let mut texture = texture_creator.create_texture_streaming(
         PixelFormatEnum::RGB24, 800, 600).unwrap();
 
-    let w = gen_blank_world(WORLD_SIZE_X, WORLD_SIZE_Y);
+    let mut w = gen_blank_world(WORLD_SIZE_X, WORLD_SIZE_Y);
 
-    texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {
+    w[5][5] = Wall{full: true, color: RED};
+
+    let p : Player = Player{pos: Vec2{x : 0.0 ,
+                                      y : (WORLD_SIZE_Y * WORLD_CELL_SIZE) as f32 },
+                            dir: Vec2{x : f32::consts::FRAC_PI_2,
+                                      y : f32::consts::FRAC_PI_2} };
+
+    //TODO_FAR Move this to a seperate renderer file that takes the world ref
+    //This function renders the raycast pixels to a pixel buffer. To be used with sdl_texture
+    //TODO FINISH IT
+    let render_statics = |buffer: &mut [u8], pitch: usize| {
         let world : &Vec<Vec<Wall>> = &w;
         println!("{}", pitch);
         for y in 0..600 {
@@ -135,24 +152,32 @@ pub fn main() {
                 buffer[offset + 2] = 0;
             }
         }
-    }).unwrap();
-
-
-    //Draw floor
-    draw_ceiling(&mut canvas);
-    draw_floor(&mut canvas);
-    //Draw texture
-    //canvas.copy(&texture, None, None).unwrap();
-
-    //Present Frame
-    canvas.present();
+    };
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     'running: loop {
+        let last_frame_instant = Instant::now();
+        //Draw floor
+        draw_ceiling(&mut canvas);
+        draw_floor(&mut canvas);
+        //TODO Finish the statics renderer
+        //Draw texture
+        texture.with_lock(None, &render_statics).unwrap();
+        canvas.copy(&texture, None, None).unwrap();
+        //Present Frame
+        canvas.present();
+
+
+
+        let frame_duration = last_frame_instant.elapsed();
+        let delta = frame_duration.as_secs() as f64
+                            + frame_duration.subsec_nanos() as f64 * 1e-9;
+        println!("Frame Duration : {}", delta);
+        debug_print_player(p);
         for event in event_pump.poll_iter() {
             match event {
-                Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), ..} => {
                     break 'running
                 },
                 _ => {}
@@ -167,10 +192,12 @@ pub fn main() {
 // NOTES
 // CURRENT : TODO gamestate -> pixel array (everything rendered to the window context texture)
 //           TODO Get raycaster to work on a collumn level then 2D stage
+//                Once simple colors are handled we should move to each wall having bitmap surfaces
 
 // Asset handling https://rust-sdl2.github.io/rust-sdl2/sdl2/image/index.html
 // ?Depth buffer
 // TODO Move graphics code to renderer module
+// TODO Add headbob (I guess their has to be a basic player height) to make moving around seem real
 // TODO_FAR Gamestate handler, actual game once initial graphics are up
 
 // TODO work on documentation of how the engine works so its easy to come back to
