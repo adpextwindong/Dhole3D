@@ -117,7 +117,7 @@ fn debug_print_player(p: Player){
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
-    let window = video_subsystem.window("rust-sdl2 demo: Video", 800, 600)
+    let window = video_subsystem.window("rust-sdl2 demo: Video", SCREEN_SIZE_X, SCREEN_SIZE_Y)
         .position_centered()
         .opengl()
         .build()
@@ -127,7 +127,7 @@ pub fn main() {
     let texture_creator = canvas.texture_creator();
 
     let mut texture = texture_creator.create_texture_streaming(
-        PixelFormatEnum::RGB24, 800, 600).unwrap();
+        PixelFormatEnum::RGB24, SCREEN_SIZE_X, SCREEN_SIZE_Y).unwrap();
 
     let mut w = gen_blank_world(WORLD_SIZE_X, WORLD_SIZE_Y);
 
@@ -143,9 +143,9 @@ pub fn main() {
     //TODO FINISH IT
     let render_statics = |buffer: &mut [u8], pitch: usize| {
         let world : &Vec<Vec<Wall>> = &w;
-        println!("{}", pitch);
-        for y in 0..600 {
-            for x in 0..800 {
+        //println!("{}", pitch);
+        for y in 0..SCREEN_SIZE_Y as usize {
+            for x in 0..SCREEN_SIZE_X as usize {
                 let offset = y*pitch + x*3;
                 buffer[offset] = 255 as u8;
                 buffer[offset + 1] = 0 as u8;
@@ -154,11 +154,14 @@ pub fn main() {
         }
     };
 
-    let mut event_pump = sdl_context.event_pump().unwrap();
 
+    let mut delta : f64 = 0.0;
+    let mut i = 0;
     'running: loop {
         let last_frame_instant = Instant::now();
         //Draw floor
+
+        let mut event_pump = sdl_context.event_pump().unwrap();
         draw_ceiling(&mut canvas);
         draw_floor(&mut canvas);
         //TODO Finish the statics renderer
@@ -168,13 +171,14 @@ pub fn main() {
         //Present Frame
         canvas.present();
 
-
-
         let frame_duration = last_frame_instant.elapsed();
-        let delta = frame_duration.as_secs() as f64
+        delta = frame_duration.as_secs() as f64
                             + frame_duration.subsec_nanos() as f64 * 1e-9;
-        println!("Frame Duration : {}", delta);
-        debug_print_player(p);
+
+        //println!("{}", delta);
+
+
+        //debug_print_player(p);
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), ..} => {
@@ -187,6 +191,9 @@ pub fn main() {
         // The rest of the game loop goes here...
         // TODO Work on gameloop once renderer is up
     }
+
+
+    println!("{}", delta);
 }
 
 // NOTES
