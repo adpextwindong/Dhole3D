@@ -8,7 +8,7 @@ pub struct Vec2<T> {
 }
 
 impl<T: Div + Mul + Add> Vec2<T>{
-    pub fn slope(&self) -> <T as Div>::Output {
+    pub fn slope(self) -> <T as Div>::Output {
         self.y / self.x
     }
     /// Computes the distance between two vectors

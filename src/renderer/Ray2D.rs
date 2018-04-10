@@ -1,7 +1,7 @@
 use renderer::vector::Vec2;
 
 /// Represents a ray for raycasting
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Ray2D {
     /// b in y = mx + b
     pub y_intercept: f32,
