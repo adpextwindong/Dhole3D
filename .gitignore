@@ -1,4 +1,16 @@
+# Intellij Turds
 .idea/
+
+# Cargo Turds
+Cargo.lock
 
 /target/
 **/*.rs.bk
+
+# SDL2 Deps
+SDL2.dll
+README-SDL.txt
+
+# Gnu Toolchain
+gnu-mingwdll32/ 
+
