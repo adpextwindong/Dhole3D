@@ -1,7 +1,18 @@
+
+
 extern crate sdl2;
 extern crate sdl2_window;
 extern crate shader_version;
 extern crate window;
+extern crate num_traits;
+
+mod renderer;
+use renderer::vector::Vec2 as Vec2;
+use renderer::vector::{rotate_clockwise, rotate_counter_clockwise};
+
+use renderer::ray2D::Ray2D;
+
+
 
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
@@ -24,7 +35,6 @@ use std::f32;
 use std::time::{Duration, Instant};
 use std::io;
 
-
 //Types TODO
 //2D Vector
 //Player obj
@@ -39,28 +49,15 @@ pub struct Wall {
     full: bool,
     color: Color,
 }
-//????
-pub struct MapGrip {
-    walls: [[Wall; 2]; 2],
-}
 
-#[derive(Copy, Clone, Debug)]
-struct Vec2 {
-    x: f32,
-    y: f32,
-}
 
-impl Vec2 {
-    /// Computes the distance between two vectors
-    fn dist(&self, other: &Vec2) -> f32 {
-        ((self.x * other.x) + (self.y * other.y)).sqrt()
-    }
-}
+// TODO https://www.scratchapixel.com/
+
 
 #[derive(Copy, Clone)]
 struct Player {
-    pos: Vec2, //Their position in the world
-    dir: Vec2, //Direction their facing
+    pos: Vec2<f32>, //Their position in the world
+    dir: Vec2<f32>, //Direction their facing
 }
 
 const NULL_COLOR: Color = Color {
@@ -160,36 +157,8 @@ fn debug_print_player(p: Player) {
     println!("POS: {} {} DIR: {} {}", p.pos.x, p.pos.y, p.dir.x, p.dir.y);
 }
 
-//https://en.wikipedia.org/wiki/Rotation_matrix
-fn rotate_counter_clockwise(v: Vec2, theta: f32) -> Vec2 {
-    return Vec2 {
-        x: (v.x * theta.cos()) - (v.y * theta.sin()),
-        y: (v.x * theta.sin()) + (v.y * theta.cos()),
-    };
-}
 
-fn rotate_clockwise(v: Vec2, theta: f32) -> Vec2 {
-    return Vec2 {
-        x: (v.x * theta.cos()) + (v.y * theta.sin()),
-        y: (v.x * -theta.sin()) + (v.y * theta.cos()),
-    };
-}
 
-fn norm(v: Vec2) -> Vec2 {
-    let l = v.length();
-    return Vec2 { x: v.x / l, y: v.y };
-}
-
-pub trait Vector {
-    //fn norm(&self) -> Vec2;
-    fn length(&self) -> f32;
-}
-impl Vector for Vec2 {
-    /// Returns the length of the vector
-    fn length(&self) -> f32 {
-        ((self.x * self.x) + (self.y * self.y)).sqrt()
-    }
-}
 
 fn find_next_cell_boundary(line_pos: f32, positive: bool) -> i32 {
     // TODO Make tests for this
@@ -203,19 +172,19 @@ fn find_next_cell_boundary(line_pos: f32, positive: bool) -> i32 {
     }
 }
 
-fn out_of_world_bounds(pos: Vec2) -> bool {
+fn out_of_world_bounds(pos: Vec2<f32>) -> bool {
     (pos.x <= (WORLD_SIZE_X as f32 * WORLD_CELL_SIZE as f32)) &&
         (pos.y <= (WORLD_SIZE_Y as f32 * WORLD_CELL_SIZE as f32))
 }
 
-fn get_wall_at_vec2_pos(pos: Vec2, w: &Vec<Vec<Wall>>) -> Wall {
+fn get_wall_at_vec2_pos(pos: Vec2<f32>, w: &Vec<Vec<Wall>>) -> Wall {
     let x: usize = (pos.x.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
     let y: usize = (pos.y.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
 
     w[x][y]
 }
 
-fn debug_print_world(w: &Vec<Vec<Wall>>, pos : Vec2) {
+fn debug_print_world(w: &Vec<Vec<Wall>>, pos : Vec2<f32>) {
     let x: usize = (pos.x.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
     let y: usize = (pos.y.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
 
@@ -357,12 +326,12 @@ pub fn main() {
                     let a_x = find_next_cell_boundary(p.pos.x, true);
                     let b_y = find_next_cell_boundary(p.pos.y, true);
 
-                    let mut x_axis_inter: Vec2 = Vec2 {
+                    let mut x_axis_inter: Vec2<f32> = Vec2::<f32> {
                         x: a_x as f32,
                         y: ray.at(a_x as f32),
                     };
-                    let mut y_axis_inter: Vec2 = Vec2 {
-                        x: (b_y as f32 - ray.y_intercept) / ray.slope,
+                    let mut y_axis_inter: Vec2<f32> = Vec2::<f32> {
+                        x: (b_y as f32 - ray.get_y_intercept()) / ray.get_slope(),
                         y: b_y as f32,
                     };
                     //debug_print_player()
@@ -508,28 +477,7 @@ pub fn main() {
 
 //TODO ADD Debug derives
 
-/// Represents a ray for raycasting
-#[derive(Debug)]
-struct Ray2D {
-    slope: f32,
-    /// m in y = mx + b
-    y_intercept: f32,
-    /// b in y = mx + b
-    dir: Vec2,
-}
 
-impl Ray2D {
-    pub fn new(dir: Vec2, y_pos: f32) -> Ray2D {
-        Ray2D {
-            slope: dir.y / dir.x,
-            y_intercept: y_pos,
-            dir,
-        }
-    }
-    pub fn at(&self, xtarg: f32) -> f32 {
-        (xtarg * self.slope) + self.y_intercept
-    }
-}
 
 // NOTES
 // CURRENT : TODO gamestate -> pixel array (everything rendered to the window context texture)
