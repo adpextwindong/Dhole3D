@@ -1,5 +1,5 @@
-use std::ops::{Div, Mul, Add};
-use num_traits;
+use std::ops::Div;
+use num_traits::Float as Float;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Vec2<T> {
@@ -7,14 +7,14 @@ pub struct Vec2<T> {
     pub y: T,
 }
 
-impl<T: Div + Mul + Add> Vec2<T>{
+impl<T: Float> Vec2<T>{
     pub fn slope(self) -> <T as Div>::Output {
         self.y / self.x
     }
     /// Computes the distance between two vectors
     pub fn dist(&self, other: &Vec2<T>) -> T
     where
-        T: Add<Output = T> + Mul<Output = T> + Copy + num_traits::float::Float
+        T: Float
     {
         ((self.x * other.x) + (self.y * other.y)).sqrt()
     }
@@ -26,17 +26,14 @@ impl<T: Div + Mul + Add> Vec2<T>{
     pub fn get_y(self) -> T {
         self.y
     }
-}
 
-pub trait Vector {
-    //fn norm(&self) -> Vec2;
-    fn length(&self) -> f32;
-}
-impl Vector for Vec2<f32> {
-    /// Returns the length of the vector
-    fn length(&self) -> f32
-    {
+    pub fn length(&self) -> T{
         ((self.x * self.x) + (self.y * self.y)).sqrt()
+    }
+
+    pub fn norm(self) -> Vec2<T> {
+        let l = self.length();
+        return Vec2::<T> { x: self.x / l, y: self.y };
     }
 }
 
@@ -55,8 +52,3 @@ pub fn rotate_clockwise(v: Vec2<f32>, theta: f32) -> Vec2<f32> {
     };
 }
 
-pub fn norm<T: Div + Mul + Add>(v: Vec2<f32>) -> Vec2<f32>
-{
-    let l = v.length();
-    return Vec2::<f32> { x: v.x / l, y: v.y };
-}
