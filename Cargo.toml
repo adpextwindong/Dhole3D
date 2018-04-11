@@ -1,7 +1,7 @@
 [package]
-name = "GameEngineBlackBookReview"
-version = "0.1.0"
-authors = ["George Crary <craryg@onid.oregonstate.edu>"]
+name = "Dhole3D"
+version = "0.0.1"
+authors = ["George Crary <craryg@oregonstate.edu>"]
 
 
 [dependencies]
