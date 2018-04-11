@@ -1,3 +1,2 @@
 - Fri, Jan 05, 2018  8:30:21 PM [Closures being consumed by loops currently](https://gist.github.com/adpextwindong/261eef5ac9f63d0f6b36dde3f08595e8)
-
-
+- Tue, Apr 10, 2018  02:47:20 PM Figured out enough about Rust generics to have some slightly generic vector code. Might as well use Piston engine's math libs however.

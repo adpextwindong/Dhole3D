@@ -1,12 +1,9 @@
-Ditch ideas here to stay single tasked.
+//Ditch ideas here to stay single tasked.
 
 https://www.reddit.com/r/programming/comments/7k4v5t/a_raytracer_in_js_4073_ms_and_in_wasm_874_ms_and/
 
-deref trait
-&str vs String
-&[T] vs Vec<T>
-&T  vs Box<T>
 Using OpenGL??
+Porting this to use WASM so it can be more 'demoable.
 
 
 // RBG888 Pitch example
