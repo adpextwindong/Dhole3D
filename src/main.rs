@@ -1,17 +1,27 @@
-
-
 extern crate sdl2;
 extern crate sdl2_window;
 extern crate shader_version;
 extern crate window;
 extern crate num_traits;
 
+
+use std::f32;
+use std::time::{Duration, Instant};
+use std::io;
+
 mod renderer;
 use renderer::vector::Vec2 as Vec2;
 use renderer::vector::{rotate_clockwise, rotate_counter_clockwise};
-
 use renderer::ray2D::Ray2D;
 
+mod world;
+use world::wall::Wall as Wall;
+use world::wall::NULL_COLOR as NULL_COLOR;
+use world::wall::FLOOR_GREY as FLOOR_GREY;
+use world::wall::RED as RED;
+use world::wall::GREEN as GREEN;
+
+use world::player::Player as Player;
 
 
 use sdl2::rect::Rect;
@@ -19,89 +29,21 @@ use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
-
-//use sdl2::surface::Surface;
-
 use sdl2::video::Window;
 use sdl2::render::Canvas;
-//use sdl2::rect;
-
 //use window::WindowSettings;
 
-//TODO_FAR opengl?
-//use shader_version::OpenGL;
-
-use std::f32;
-use std::time::{Duration, Instant};
-use std::io;
 
 //Types TODO
-//2D Vector
 //Player obj
 //Map type
 //World map var
 //Wall Type
 
-//?Far compression of world to file
-//See how much this struct takes up in mem and alignment etc...
-#[derive(Copy, Clone)]
-pub struct Wall {
-    full: bool,
-    color: Color,
-}
-
-
 // TODO https://www.scratchapixel.com/
 
 
-#[derive(Copy, Clone)]
-struct Player {
-    pos: Vec2<f32>, //Their position in the world
-    dir: Vec2<f32>, //Direction their facing
-}
 
-const NULL_COLOR: Color = Color {
-    r: 0,
-    g: 0,
-    b: 0,
-    a: 0,
-};
-const NULL_WALL: Wall = Wall {
-    full: false,
-    color: NULL_COLOR,
-};
-
-const RED: Color = Color {
-    r: 255,
-    g: 0,
-    b: 0,
-    a: 255,
-};
-const GREEN: Color = Color {
-    r: 0,
-    g: 255,
-    b: 0,
-    a: 255,
-};
-const BLUE: Color = Color {
-    r: 0,
-    g: 0,
-    b: 255,
-    a: 255,
-};
-
-const FLOOR_GREY: Color = Color {
-    r: 128,
-    g: 128,
-    b: 128,
-    a: 255,
-};
-const CEILING_BLACK: Color = Color {
-    r: 0,
-    g: 0,
-    b: 0,
-    a: 255,
-};
 
 //WORLD CONSTANTS
 //TODO make this flexible for loading seperate worlds
@@ -265,7 +207,6 @@ pub fn main() {
         w[i][0] = red_wall;
         w[i][WORLD_SIZE_X as usize - 1 as usize] = red_wall;
     }
-
     w[5][5] = red_wall;
 
     debug_print_world(&w, p.pos);
