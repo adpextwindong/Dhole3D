@@ -13,5 +13,9 @@ shader_version = "0.3.0"
 gl = "0.6.0"
 num-traits = "0.2"
 
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+
 [dependencies.pistoncore-sdl2_window]
 git = "https://github.com/PistonDevelopers/sdl2_window"

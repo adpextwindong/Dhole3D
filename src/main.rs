@@ -4,6 +4,11 @@ extern crate shader_version;
 extern crate window;
 extern crate num_traits;
 
+#[macro_use]
+extern crate serde_derive;
+
+extern crate serde;
+extern crate serde_json;
 
 use std::f32;
 use std::time::{Duration, Instant};
