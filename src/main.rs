@@ -176,6 +176,13 @@ pub fn main() {
         .build()
         .unwrap();
 
+    let debug_window = video_subsystem
+        .window("rust-sdl2 demo: Debug Window", SCREEN_SIZE_X, SCREEN_SIZE_Y)
+        .position_centered()
+        .opengl()
+        .build()
+        .unwrap();
+
     let mut canvas = window.into_canvas().build().unwrap();
     let texture_creator = canvas.texture_creator();
 
@@ -384,7 +391,7 @@ pub fn main() {
         draw_ceiling(&mut canvas);
         draw_floor(&mut canvas);
         //TODO Finish the statics renderer
-        //Draw texture
+        //Draw statics texture
         texture.with_lock(None, &render_statics).unwrap();
         canvas.copy(&texture, None, None).unwrap();
         //Present Frame
@@ -412,13 +419,6 @@ pub fn main() {
 
     println!("Frame Delta : {}", delta);
 }
-
-//TODO Add docstrings to things
-
-
-//TODO ADD Debug derives
-
-
 
 // NOTES
 // CURRENT : TODO gamestate -> pixel array (everything rendered to the window context texture)
