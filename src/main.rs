@@ -174,11 +174,11 @@ fn find_axis_intersections(position : Vec2<f32>, ray: Ray2D) -> (Vec2<f32>, Vec2
     let a_x = find_next_cell_boundary(position.x, true);
     let b_y = find_next_cell_boundary(position.y, true);
 
-    let mut x_axis_inter: Vec2<f32> = Vec2::<f32> {
+    let x_axis_inter: Vec2<f32> = Vec2::<f32> {
         x: a_x as f32,
         y: ray.at(a_x as f32),
     };
-    let mut y_axis_inter: Vec2<f32> = Vec2::<f32> {
+    let y_axis_inter: Vec2<f32> = Vec2::<f32> {
         x: (b_y as f32 - ray.get_y_intercept()) / ray.get_slope(),
         y: b_y as f32,
     };
