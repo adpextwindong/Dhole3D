@@ -124,7 +124,7 @@ fn out_of_world_bounds(pos: Vec2<f32>) -> bool {
         (pos.y <= (WORLD_SIZE_Y as f32 * WORLD_CELL_SIZE as f32))
 }
 
-fn get_wall_at_vec2_pos(pos: Vec2<f32>, w: &Vec<Vec<Wall>>) -> Wall {
+fn get_world_cell_at_vec2_pos(pos: Vec2<f32>, w: &Vec<Vec<Wall>>) -> Wall {
     let x: usize = (pos.x.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
     let y: usize = (pos.y.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
 
@@ -170,6 +170,35 @@ fn draw_col(buffer: &mut [u8], pitch: usize) {
     //        }
 }
 
+fn find_axis_intersections(position : Vec2<f32>, ray: Ray2D) -> (Vec2<f32>, Vec2<f32>){
+    let a_x = find_next_cell_boundary(position.x, true);
+    let b_y = find_next_cell_boundary(position.y, true);
+
+    let mut x_axis_inter: Vec2<f32> = Vec2::<f32> {
+        x: a_x as f32,
+        y: ray.at(a_x as f32),
+    };
+    let mut y_axis_inter: Vec2<f32> = Vec2::<f32> {
+        x: (b_y as f32 - ray.get_y_intercept()) / ray.get_slope(),
+        y: b_y as f32,
+    };
+
+    (x_axis_inter, y_axis_inter)
+}
+
+fn advance_x_intersection(x_axis_intersection : Vec2<f32>, y_step : f32) -> Vec2<f32> {
+    Vec2 {
+        x: x_axis_intersection.x + WORLD_CELL_SIZE as f32,
+        y: x_axis_intersection.y + y_step,
+    }
+}
+
+fn advance_y_intersection(y_axis_intersection : Vec2<f32>, x_step : f32) -> Vec2<f32> {
+    Vec2 {
+        x: y_axis_intersection.x + WORLD_CELL_SIZE as f32,
+        y: y_axis_intersection.y + y_step,
+    }
+}
 
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -195,7 +224,7 @@ pub fn main() {
         .create_texture_streaming(PixelFormatEnum::RGB24, SCREEN_SIZE_X, SCREEN_SIZE_Y)
         .unwrap();
 
-    let mut w = gen_blank_world(WORLD_SIZE_X, WORLD_SIZE_Y);
+    let mut theworld = gen_blank_world(WORLD_SIZE_X, WORLD_SIZE_Y);
 
     let p: Player = Player {
         pos: Vec2 {
@@ -213,175 +242,80 @@ pub fn main() {
         color: RED,
     };
     for i in 0..WORLD_SIZE_X as usize {
-        w[0][i] = red_wall;
-        w[WORLD_SIZE_Y as usize - 1 as usize][i] = red_wall;
+        theworld[0][i] = red_wall;
+        theworld[WORLD_SIZE_Y as usize - 1 as usize][i] = red_wall;
 
-        w[i][0] = red_wall;
-        w[i][WORLD_SIZE_X as usize - 1 as usize] = red_wall;
+        theworld[i][0] = red_wall;
+        theworld[i][WORLD_SIZE_X as usize - 1 as usize] = red_wall;
     }
-    w[5][5] = red_wall;
+    theworld[5][5] = red_wall;
 
-    debug_print_world(&w, p.pos);
+    debug_print_world(&theworld, p.pos);
+
+    // TODO!! MAKE THIS MORE UNIT TESTABLE
+    // TODO!! Find some way to edit the tileset easier
 
     //TODO_FAR Move this to a seperate renderer file that takes the world ref
     //This function renders the raycast pixels to a pixel buffer. To be used with sdl_texture
     //TODO FINISH IT
     let render_statics = |buffer: &mut [u8], pitch: usize| {
-        let world: &Vec<Vec<Wall>> = &w;
+        let world: &Vec<Vec<Wall>> = &theworld;
         let p: &Player = &p;
 
-        //TODO Remove this shit once I got all the ray stuff working
-        let mut test_color: Color = RED;
         let fov = f32::consts::FRAC_PI_2;
-        let left_most_dir = rotate_counter_clockwise(p.dir, fov / 2.0);
+        let mut ray_curr_dir = rotate_counter_clockwise(p.dir, fov / 2.0);
 
-        //let delta_theta_x = fov / SCREEN_SIZE_X as f32;
         let delta_theta_y = fov / SCREEN_SIZE_Y as f32;
 
-        //TODO do the rotation of the player dir vector by FRAC_PI_4
-        let mut curr_dir = left_most_dir;
-        //Start from player position, use the ray to check
-
-
-        //Use dir for x value and p.y as y intercept for rayline
-        //Scan through static walls from (p.x , p.y) in that direction
-        //Have cases for directions of on unit circle quadrants
-        //  Dictates 2D array access
-        //
         //  Check nearest wall adjacent to current position, scans next needbe
         //  Use distance for wall scaling
         //  figure out fish eye projection issue
 
-        // TODO SPLIT INTO QUADRANTS
-
-        //       | /
-        //  ______/___
-        //      /|
-        //    /  |
-        //  x    |
-        // 0 .. 64 .. 128
-
-        // apply symmetry across slope > 1 and slope < 1
-
-        // TODO!! MAKE THIS MORE UNIT TESTABLE
-        // TODO!! Find some way to edit the tileset easier
-
         // Cast Ray
         'raycasting: for y in 0..SCREEN_SIZE_Y as usize {
             //TODO shoot ray using curr_dir
-            let ray: Ray2D = Ray2D::new(curr_dir, p.pos.y);
+            let ray: Ray2D = Ray2D::new(ray_curr_dir, p.pos.y);
 
-            if p.dir.x.is_sign_positive() {
-                if p.dir.y.is_sign_positive() {
+            let xstep = if p.dir.x.is_sign_positive(){
+                (1.0 / ray.dir.x).abs() * WORLD_CELL_SIZE as f32
+            }else{
+                -1.0 * (1.0 / ray.dir.x).abs() * WORLD_CELL_SIZE as f32
+            };
 
-                    //?Refactor and use p.dir.x.sign_positive directly???
-                    //??? hoist
-                    let a_x = find_next_cell_boundary(p.pos.x, true);
-                    let b_y = find_next_cell_boundary(p.pos.y, true);
+            let ystep = if p.dir.y.is_sign_positive() {
+                (1.0 / ray.dir.y).abs() * WORLD_CELL_SIZE as f32
+            }else {
+                -1.0 * (1.0 / ray.dir.y).abs() * WORLD_CELL_SIZE as f32
+            };
 
-                    let mut x_axis_inter: Vec2<f32> = Vec2::<f32> {
-                        x: a_x as f32,
-                        y: ray.at(a_x as f32),
-                    };
-                    let mut y_axis_inter: Vec2<f32> = Vec2::<f32> {
-                        x: (b_y as f32 - ray.get_y_intercept()) / ray.get_slope(),
-                        y: b_y as f32,
-                    };
-                    //debug_print_player()
-                    //println!("INTIAL X:{} Y:{}", y_axis_inter.x, y_axis_inter.y);
+            let (mut x_axis_intersection,mut y_axis_intersection) = find_axis_intersections(p.pos, ray);
 
-                    let xstep = (1.0 / ray.dir.x).abs() * WORLD_CELL_SIZE as f32;
-                    let ystep = (1.0 / ray.dir.y).abs() * WORLD_CELL_SIZE as f32;
+            'finding_wall: loop {
+                let mut x_dir_oob: bool = out_of_world_bounds(x_axis_intersection);
+                let mut y_dir_oob: bool = out_of_world_bounds(y_axis_intersection);
 
+                println!("Seeable in X dir {} Y dir {}", x_dir_oob, y_dir_oob);
 
-                    let draw_color = GREEN;
-                    let draw_X = y;
-
-                    for draw_col in 0..SCREEN_SIZE_X as u8 {
-                        let offset = draw_X * pitch + draw_col as usize * 3;
-                        buffer[offset] = draw_color.r as u8;
-                        buffer[offset + 1] = draw_color.g as u8;
-                        buffer[offset + 2] = draw_color.b as u8;
+                let dist_x = x_axis_intersection.dist(&p.pos);
+                let dist_y = y_axis_intersection.dist(&p.pos);
+                if x_dir_oob && y_dir_oob { //The ray has hit out of bounds
+                    //TODO Sample gameworld bounds color and break
+                    break 'finding_wall;
+                }else if dist_x < dist_y && !x_dir_oob { //Next X intersection with grid is closer
+                    let potential_wall = get_world_cell_at_vec2_pos(x_axis_intersection, &theworld);
+                    if potential_wall.full {
+                        //Draw collumn TODO HEIGHT SCALING
+                        println!("WALL FOUND!!");
+                        //TODO Sample wall color and break
+                        break 'finding_wall;
+                    }else{
+                        x_axis_intersection = advance_x_intersection(x_axis_intersection, ystep);
                     }
-
-                    'finding_wall: loop {
-                        let mut x_dir_oob: bool = out_of_world_bounds(x_axis_inter);
-                        let mut y_dir_oob: bool = out_of_world_bounds(y_axis_inter);
-
-                        println!("Seeable in X dir {} Y dir {}", x_dir_oob, y_dir_oob);
-
-                        let dist_x = x_axis_inter.dist(&p.pos);
-                        let dist_y = y_axis_inter.dist(&p.pos);
-                        //fix yintercept invalidation on update
-                        if !x_dir_oob && !y_dir_oob {
-                            if dist_x < dist_y && !y_dir_oob{
-                                //check x dir first then y
-                                let potential_wall = get_wall_at_vec2_pos(x_axis_inter, &w);
-                                if potential_wall.full {
-                                    //Draw collumn TODO HEIGHT SCALING
-                                    println!("WALL FOUND!!");
-
-                                    break 'finding_wall;
-                                } else {
-                                    //Advance to next x inter
-                                    x_axis_inter = Vec2 {
-                                        x: x_axis_inter.x + WORLD_CELL_SIZE as f32,
-                                        y: x_axis_inter.y + ystep,
-                                    };
-                                    // Next intersection is out of bounds ?Switch
-                                    if out_of_world_bounds(x_axis_inter) {
-                                        x_dir_oob = true;
-                                        if y_dir_oob {
-                                            continue 'raycasting;
-                                        }
-                                        println!("Keep going x");
-                                        break 'finding_wall;
-                                    }
-                                }
-                            } else if !x_dir_oob {
-                                //println!("X:{} Y:{}", y_axis_inter.x, y_axis_inter.y);
-                                println!("WALL FOUND!!");
-
-                                let potential_wall = get_wall_at_vec2_pos(y_axis_inter, &w);
-                                if potential_wall.full {
-                                    let draw_color = potential_wall.color;
-                                    //draw_col
-
-                                    break 'finding_wall;
-                                } else {
-                                    //Advance to next y inter
-                                    y_axis_inter = Vec2 {
-                                        x: y_axis_inter.x + xstep,
-                                        y: x_axis_inter.y + WORLD_CELL_SIZE as f32,
-                                    };
-
-                                    if out_of_world_bounds(y_axis_inter) {
-                                        y_dir_oob = true;
-                                        if x_dir_oob {
-                                            continue 'raycasting;
-                                        }
-                                        println!("Keep going Y");
-                                        break 'finding_wall;
-                                    }
-                                }
-                            }
-                        }else {
-                            break 'finding_wall;
-                        }
-
-                    }
-
-                    //bounce between x axis steps and y axis steps
-                    // process intersections in order of distance
-
-
+                }else if !y_dir_oob{
+                    //TODO implement y intersection sampling
                 }
             }
-
-            //let curr_w :Wall = world[y][i];
-
-
-            curr_dir = rotate_clockwise(curr_dir, delta_theta_y);
+            ray_curr_dir = rotate_clockwise(ray_curr_dir, delta_theta_y);
         }
     };
 
