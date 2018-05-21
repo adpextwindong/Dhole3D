@@ -200,6 +200,56 @@ fn advance_y_intersection(y_axis_intersection : Vec2<f32>, x_step : f32) -> Vec2
     }
 }
 
+//TODO HEIGHT SCALING
+fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -> Option<(Wall, f32)> {
+    let xstep = if p.dir.x.is_sign_positive(){
+        (1.0 / ray.dir.x).abs() * WORLD_CELL_SIZE as f32
+    }else{
+        -1.0 * (1.0 / ray.dir.x).abs() * WORLD_CELL_SIZE as f32
+    };
+
+    let ystep = if p.dir.y.is_sign_positive() {
+        (1.0 / ray.dir.y).abs() * WORLD_CELL_SIZE as f32
+    }else {
+        -1.0 * (1.0 / ray.dir.y).abs() * WORLD_CELL_SIZE as f32
+    };
+
+    let (mut x_axis_intersection,mut y_axis_intersection) = find_axis_intersections(p.pos, ray);
+
+    'finding_wall: loop {
+        let x_dir_oob: bool = out_of_world_bounds(x_axis_intersection);
+        let y_dir_oob: bool = out_of_world_bounds(y_axis_intersection);
+
+        let dist_x_inter = x_axis_intersection.dist(&p.pos);
+        let dist_y_inter = y_axis_intersection.dist(&p.pos);
+
+        println!("Seeable in X dir {} Y dir {}", x_dir_oob, y_dir_oob);
+
+        if x_dir_oob && y_dir_oob { //The ray has hit out of bounds
+            return None;
+
+        }else if dist_x_inter < dist_y_inter && !x_dir_oob { //Check X intersection on grid as its closer
+
+            let potential_wall : Wall = get_world_cell_at_vec2_pos(x_axis_intersection, &theworld);
+            if potential_wall.full {
+                println!("WALL FOUND!!");
+                return Some((potential_wall, dist_x_inter))
+            }else{
+                x_axis_intersection = advance_x_intersection(x_axis_intersection, ystep);
+            }
+        }else if !y_dir_oob { //Check Y intersection on grid as its closer
+
+            let potential_wall : Wall = get_world_cell_at_vec2_pos(y_axis_intersection, &theworld);
+            if potential_wall.full {
+                println!("WALL FOUND!!");
+                return Some((potential_wall, dist_y_inter))
+            }else{
+                y_axis_intersection = advance_y_intersection(x_axis_intersection, xstep);
+            }
+        }
+    }
+}
+
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -273,48 +323,11 @@ pub fn main() {
 
         // Cast Ray
         'raycasting: for y in 0..SCREEN_SIZE_Y as usize {
-            //TODO shoot ray using curr_dir
             let ray: Ray2D = Ray2D::new(ray_curr_dir, p.pos.y);
 
-            let xstep = if p.dir.x.is_sign_positive(){
-                (1.0 / ray.dir.x).abs() * WORLD_CELL_SIZE as f32
-            }else{
-                -1.0 * (1.0 / ray.dir.x).abs() * WORLD_CELL_SIZE as f32
-            };
+            let sampled_wall : Option<(Wall, f32)> = find_wall_and_distance(world, p, ray);
+            //TODO draw wall with height scaling
 
-            let ystep = if p.dir.y.is_sign_positive() {
-                (1.0 / ray.dir.y).abs() * WORLD_CELL_SIZE as f32
-            }else {
-                -1.0 * (1.0 / ray.dir.y).abs() * WORLD_CELL_SIZE as f32
-            };
-
-            let (mut x_axis_intersection,mut y_axis_intersection) = find_axis_intersections(p.pos, ray);
-
-            'finding_wall: loop {
-                let mut x_dir_oob: bool = out_of_world_bounds(x_axis_intersection);
-                let mut y_dir_oob: bool = out_of_world_bounds(y_axis_intersection);
-
-                println!("Seeable in X dir {} Y dir {}", x_dir_oob, y_dir_oob);
-
-                let dist_x = x_axis_intersection.dist(&p.pos);
-                let dist_y = y_axis_intersection.dist(&p.pos);
-                if x_dir_oob && y_dir_oob { //The ray has hit out of bounds
-                    //TODO Sample gameworld bounds color and break
-                    break 'finding_wall;
-                }else if dist_x < dist_y && !x_dir_oob { //Next X intersection with grid is closer
-                    let potential_wall = get_world_cell_at_vec2_pos(x_axis_intersection, &theworld);
-                    if potential_wall.full {
-                        //Draw collumn TODO HEIGHT SCALING
-                        println!("WALL FOUND!!");
-                        //TODO Sample wall color and break
-                        break 'finding_wall;
-                    }else{
-                        x_axis_intersection = advance_x_intersection(x_axis_intersection, ystep);
-                    }
-                }else if !y_dir_oob{
-                    //TODO implement y intersection sampling
-                }
-            }
             ray_curr_dir = rotate_clockwise(ray_curr_dir, delta_theta_y);
         }
     };
