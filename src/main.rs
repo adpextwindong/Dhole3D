@@ -195,8 +195,8 @@ fn advance_x_intersection(x_axis_intersection : Vec2<f32>, y_step : f32) -> Vec2
 
 fn advance_y_intersection(y_axis_intersection : Vec2<f32>, x_step : f32) -> Vec2<f32> {
     Vec2 {
-        x: y_axis_intersection.x + WORLD_CELL_SIZE as f32,
-        y: y_axis_intersection.y + y_step,
+        x: y_axis_intersection.x + x_step,
+        y: y_axis_intersection.y + WORLD_CELL_SIZE as f32,
     }
 }
 
