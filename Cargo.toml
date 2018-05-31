@@ -2,10 +2,10 @@
 name = "Dhole3D"
 version = "0.0.1"
 authors = ["George Crary <craryg@oregonstate.edu>"]
-
+build = "build.rs"
 
 [dependencies]
-sdl2 = "0.30.0"
+sdl2 = "0.31.0"
 piston2d-graphics = "0.23.0"
 pistoncore-window = "0.30.0"
 pistoncore-input = "0.20.0"
