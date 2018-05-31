@@ -3,6 +3,7 @@ name = "Dhole3D"
 version = "0.0.1"
 authors = ["George Crary <craryg@oregonstate.edu>"]
 build = "build.rs"
+debug = true
 
 [dependencies]
 sdl2 = "0.31.0"

@@ -12,7 +12,7 @@ extern crate serde_json;
 
 use std::f32;
 use std::time::{Duration, Instant};
-use std::io;
+use std::io::{self, Read};
 
 mod renderer;
 use renderer::vector::Vec2 as Vec2;
@@ -120,15 +120,18 @@ fn find_next_cell_boundary(line_pos: f32, positive: bool) -> i32 {
 }
 
 fn out_of_world_bounds(pos: Vec2<f32>) -> bool {
-    (pos.x <= (WORLD_SIZE_X as f32 * WORLD_CELL_SIZE as f32)) &&
-        (pos.y <= (WORLD_SIZE_Y as f32 * WORLD_CELL_SIZE as f32))
+    if pos.x == std::f32::INFINITY || pos.y == std::f32::INFINITY {
+        return true;
+    }else{
+        return (pos.x >= (WORLD_SIZE_X as f32 * WORLD_CELL_SIZE as f32)) ||
+            (pos.y >= (WORLD_SIZE_Y as f32 * WORLD_CELL_SIZE as f32))
+    }
+
 }
 
 fn get_world_cell_at_vec2_pos(pos: Vec2<f32>, w: &Vec<Vec<Wall>>) -> Wall {
     let x: usize = (pos.x.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
     let y: usize = (pos.y.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
-
-    println!("POS: {} {} ", x, y);
     w[x][y]
 }
 
@@ -159,16 +162,13 @@ fn debug_print_world(w: &Vec<Vec<Wall>>, pos : Vec2<f32>) {
 //    w[x][y].full
 //}
 
-fn draw_col(buffer: &mut [u8], pitch: usize) {
-
-    //        for y in 0..SCREEN_SIZE_Y as usize {
-    //            for x in 0..SCREEN_SIZE_X as usize {
-    //                let offset = y * pitch + x * 3;
-    //                buffer[offset] = test_color.r as u8;
-    //                buffer[offset + 1] = test_color.g as u8;
-    //                buffer[offset + 2] = test_color.b as u8;
-    //            }
-    //        }
+fn draw_col(buffer: &mut [u8], pitch: usize, y: usize, color: Color) {
+    for x in 0..SCREEN_SIZE_X as usize {
+        let offset = y * pitch + x * 3;
+        buffer[offset] = color.r as u8;
+        buffer[offset + 1] = color.g as u8;
+        buffer[offset + 2] = color.b as u8;
+    }
 }
 
 fn find_axis_intersections(position : Vec2<f32>, ray: Ray2D) -> (Vec2<f32>, Vec2<f32>){
@@ -202,6 +202,7 @@ fn advance_y_intersection(y_axis_intersection : Vec2<f32>, x_step : f32) -> Vec2
 }
 
 //TODO HEIGHT SCALING
+///DDA Algorithm using initial x and y axis intersections
 fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -> Option<(Wall, f32)> {
     let xstep = if p.dir.x.is_sign_positive(){
         (1.0 / ray.dir.x).abs() * WORLD_CELL_SIZE as f32
@@ -217,8 +218,9 @@ fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -
 
     let (mut x_axis_intersection,mut y_axis_intersection) = find_axis_intersections(p.pos, ray);
 
-    println!("STEPS {:?} {:?}", xstep, ystep);
-    println!("PLAYER {:?} {:?}", p.pos, ray.dir);
+    //println!("\nSTEPS {:?} {:?}", xstep, ystep);
+    //TODO FIX STEP == INF CASE
+    //println!("PLAYER POS: {:?} RAY DIRECTION: {:?}", p.pos, ray.dir);
     'finding_wall: loop {
         let x_dir_oob: bool = out_of_world_bounds(x_axis_intersection);
         let y_dir_oob: bool = out_of_world_bounds(y_axis_intersection);
@@ -228,26 +230,24 @@ fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -
 
         if x_dir_oob && y_dir_oob { //The ray has hit out of bounds
             return None;
-        }else if dist_x_inter > dist_y_inter && !x_dir_oob { //Check X intersection on grid as its closer
-            println!("{}", x_dir_oob);
+        }else if dist_x_inter < dist_y_inter && !x_dir_oob { //Check X intersection on grid as its closer
+            //println!("X walk");
             let potential_wall : Wall = get_world_cell_at_vec2_pos(x_axis_intersection, &theworld);
             if potential_wall.full {
-                println!("WALL FOUND!!");
+                //println!("WALL FOUND!!");
                 return Some((potential_wall, dist_x_inter))
             }else{
                 x_axis_intersection = advance_x_intersection(x_axis_intersection, ystep);
             }
         }else if !y_dir_oob { //Check Y intersection on grid as its closer
-
+            //println!("Y walk");
             let potential_wall : Wall = get_world_cell_at_vec2_pos(y_axis_intersection, &theworld);
             if potential_wall.full {
-                println!("WALL FOUND!!");
+                //println!("WALL FOUND!!");
                 return Some((potential_wall, dist_y_inter))
             }else{
                 y_axis_intersection = advance_y_intersection(x_axis_intersection, xstep);
             }
-        }else {
-            println!("{} {}", dist_x_inter, dist_y_inter);
         }
     }
 }
@@ -325,13 +325,19 @@ pub fn main() {
 
         // Cast Ray
         'raycasting: for y in 0..SCREEN_SIZE_Y as usize {
+            //println!("ITER {}", y);
             let ray: Ray2D = Ray2D::new(ray_curr_dir, p.pos.y);
-            println!("NEW RAY: {:?}",ray);
-            let sampled_wall : Option<(Wall, f32)> = find_wall_and_distance(world, p, ray);
+            //println!("NEW RAY: {:?}",ray);
+            let possible_wall : Option<(Wall, f32)> = find_wall_and_distance(world, p, ray);
             //TODO draw wall with height scaling
+            if let Some((sampled_wall, _dist)) = possible_wall {
+                draw_col(buffer, pitch, y, sampled_wall.color);
+            }
 
             ray_curr_dir = rotate_clockwise(ray_curr_dir, delta_theta_y);
         }
+        let mut stdin = io::stdin();
+        //let _ = stdin.read(&mut [0u8]).unwrap();
     };
 
 
