@@ -128,6 +128,7 @@ fn get_world_cell_at_vec2_pos(pos: Vec2<f32>, w: &Vec<Vec<Wall>>) -> Wall {
     let x: usize = (pos.x.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
     let y: usize = (pos.y.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
 
+    println!("POS: {} {} ", x, y);
     w[x][y]
 }
 
@@ -216,6 +217,8 @@ fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -
 
     let (mut x_axis_intersection,mut y_axis_intersection) = find_axis_intersections(p.pos, ray);
 
+    println!("STEPS {:?} {:?}", xstep, ystep);
+    println!("PLAYER {:?} {:?}", p.pos, ray.dir);
     'finding_wall: loop {
         let x_dir_oob: bool = out_of_world_bounds(x_axis_intersection);
         let y_dir_oob: bool = out_of_world_bounds(y_axis_intersection);
@@ -223,13 +226,10 @@ fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -
         let dist_x_inter = x_axis_intersection.dist(&p.pos);
         let dist_y_inter = y_axis_intersection.dist(&p.pos);
 
-        println!("Seeable in X dir {} Y dir {}", x_dir_oob, y_dir_oob);
-
         if x_dir_oob && y_dir_oob { //The ray has hit out of bounds
             return None;
-
-        }else if dist_x_inter < dist_y_inter && !x_dir_oob { //Check X intersection on grid as its closer
-
+        }else if dist_x_inter > dist_y_inter && !x_dir_oob { //Check X intersection on grid as its closer
+            println!("{}", x_dir_oob);
             let potential_wall : Wall = get_world_cell_at_vec2_pos(x_axis_intersection, &theworld);
             if potential_wall.full {
                 println!("WALL FOUND!!");
@@ -246,6 +246,8 @@ fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -
             }else{
                 y_axis_intersection = advance_y_intersection(x_axis_intersection, xstep);
             }
+        }else {
+            println!("{} {}", dist_x_inter, dist_y_inter);
         }
     }
 }
@@ -324,7 +326,7 @@ pub fn main() {
         // Cast Ray
         'raycasting: for y in 0..SCREEN_SIZE_Y as usize {
             let ray: Ray2D = Ray2D::new(ray_curr_dir, p.pos.y);
-
+            println!("NEW RAY: {:?}",ray);
             let sampled_wall : Option<(Wall, f32)> = find_wall_and_distance(world, p, ray);
             //TODO draw wall with height scaling
 
