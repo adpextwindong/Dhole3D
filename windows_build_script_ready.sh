@@ -24,4 +24,6 @@ then
     #mkdir -p msvc/dll/64
     #mkdir -p msvc/lib/32
     #mkdir -p msvc/lib/64
+else
+    echo 'SDL2-devel-2.0.8-mingw.tar.gz required.'
 fi
