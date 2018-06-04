@@ -300,7 +300,15 @@ pub fn main() {
         theworld[i][0] = red_wall;
         theworld[i][WORLD_SIZE_X as usize - 1 as usize] = red_wall;
     }
-    theworld[5][5] = red_wall;
+    theworld[5][5] = Wall {
+        full: true,
+        color: GREEN,
+    };;
+    theworld[5][2] = Wall {
+        full: true,
+        color: GREEN,
+    };;
+
 
     debug_print_world(&theworld, p.pos);
 
@@ -336,7 +344,7 @@ pub fn main() {
 
             ray_curr_dir = rotate_clockwise(ray_curr_dir, delta_theta_y);
         }
-        let mut stdin = io::stdin();
+        //let mut stdin = io::stdin();
         //let _ = stdin.read(&mut [0u8]).unwrap();
     };
 
