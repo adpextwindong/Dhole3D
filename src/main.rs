@@ -162,8 +162,8 @@ fn debug_print_world(w: &Vec<Vec<Wall>>, pos : Vec2<f32>) {
 //    w[x][y].full
 //}
 
-fn draw_col(buffer: &mut [u8], pitch: usize, y: usize, color: Color) {
-    for x in 0..SCREEN_SIZE_X as usize {
+fn draw_col(buffer: &mut [u8], pitch: usize, x: usize, color: Color) {
+    for y in 0..SCREEN_SIZE_Y as usize {
         let offset = y * pitch + x * 3;
         buffer[offset] = color.r as u8;
         buffer[offset + 1] = color.g as u8;
