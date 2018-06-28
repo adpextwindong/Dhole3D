@@ -120,7 +120,7 @@ fn find_next_cell_boundary(line_pos: f32, positive: bool) -> i32 {
 }
 
 fn out_of_world_bounds(pos: Vec2<f32>) -> bool {
-    if pos.x == std::f32::INFINITY || pos.y == std::f32::INFINITY {
+    if pos.x == std::f32::INFINITY || pos.y == std::f32::INFINITY || pos.x == -std::f32::INFINITY || pos.y == -std::f32::INFINITY {
         return true;
     }else{
         return (pos.x >= (WORLD_SIZE_X as f32 * WORLD_CELL_SIZE as f32)) ||
