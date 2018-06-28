@@ -9,6 +9,7 @@ extern crate serde_derive;
 
 extern crate serde;
 extern crate serde_json;
+// TODO Map serialization
 
 use std::f32;
 use std::time::{Duration, Instant};
@@ -29,14 +30,14 @@ use world::wall::GREEN as GREEN;
 use world::player::Player as Player;
 
 
-use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::video::Window;
 use sdl2::render::Canvas;
-//use window::WindowSettings;
+use sdl2::rect::Rect;
+
 
 
 //Types TODO
@@ -87,7 +88,6 @@ fn gen_blank_world(x: usize, y: usize) -> Vec<Vec<Wall>> {
 //      and actually make them world surfaces once we get to true'r 3d
 fn draw_ceiling(canvas: &mut Canvas<Window>) {
     canvas.set_draw_color(Color::RGB(0, 0, 0));
-    //FIX ME This expects to be ran first
     canvas.clear();
 }
 
@@ -98,6 +98,27 @@ fn draw_floor(canvas: &mut Canvas<Window>) {
     canvas
         .fill_rect(Rect::new(0, pos_y, SCREEN_SIZE_X, size_y as u32))
         .unwrap();
+}
+
+fn debug_draw_world(canvas: &mut Canvas<Window>, w : &Vec<Vec<Wall>>) {
+    canvas.set_draw_color(Color{
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0,
+    });
+    //TODO maybe need scaling/moving around for bigger maps but we can refactor that later.
+    let rect_size = SCREEN_SIZE_Y / WORLD_SIZE_Y as u32;
+    let mut recs = Vec::<sdl2::rect::Rect>::with_capacity(WORLD_SIZE_X * WORLD_SIZE_Y as usize);
+    for x in 0..WORLD_SIZE_X as i32{
+        for y in 0..WORLD_SIZE_Y as i32{
+            let frame = sdl2::rect::Rect::new(x * rect_size as i32, y * rect_size as i32, rect_size, rect_size);
+
+            recs.push(frame);
+        }
+    }
+
+    canvas.draw_rects(&recs);
 }
 
 fn debug_print_player(p: Player) {
@@ -130,6 +151,7 @@ fn out_of_world_bounds(pos: Vec2<f32>) -> bool {
 }
 
 fn get_world_cell_at_vec2_pos(pos: Vec2<f32>, w: &Vec<Vec<Wall>>) -> Wall {
+    println!("GET_WORLD POS {:?}",pos);
     let x: usize = (pos.x.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
     let y: usize = (pos.y.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
     w[x][y]
@@ -152,15 +174,6 @@ fn debug_print_world(w: &Vec<Vec<Wall>>, pos : Vec2<f32>) {
         println!();
     }
 }
-//
-//fn check_wall_at_vec2_pos(pos : Vec2,w : &Vec<Vec<Wall>>) -> bool{
-//    // TODO REFACTOR INTO WORLD CLASS? ASSERT THAT THESE ARE POSITIVE
-//    // FLOOR??
-//    let x : usize = (pos.x.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
-//    let y : usize = (pos.y.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
-//
-//    w[x][y].full
-//}
 
 fn draw_col(buffer: &mut [u8], pitch: usize, x: usize, color: Color) {
     for y in 0..SCREEN_SIZE_Y as usize {
@@ -201,9 +214,7 @@ fn advance_y_intersection(y_axis_intersection : Vec2<f32>, x_step : f32) -> Vec2
     }
 }
 
-//TODO HEIGHT SCALING
-///DDA Algorithm using initial x and y axis intersections
-fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -> Option<(Wall, f32)> {
+fn gen_dda_steps(p : &Player, ray : &Ray2D) -> (f32,f32) {
     let xstep = if p.dir.x.is_sign_positive(){
         (1.0 / ray.dir.x).abs() * WORLD_CELL_SIZE as f32
     }else{
@@ -216,14 +227,27 @@ fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -
         -1.0 * (1.0 / ray.dir.y).abs() * WORLD_CELL_SIZE as f32
     };
 
+    (xstep, ystep)
+}
+
+//TODO HEIGHT SCALING
+///DDA Algorithm using initial x and y axis intersections
+fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -> Option<(Wall, f32)> {
+    let (xstep, ystep) = gen_dda_steps(p,&ray);
+    println!("RAY: {:?}",ray);
+    println!("STEPS X: {:?}, Y: {:?}", xstep, ystep);
+
     let (mut x_axis_intersection,mut y_axis_intersection) = find_axis_intersections(p.pos, ray);
 
     //println!("\nSTEPS {:?} {:?}", xstep, ystep);
     //TODO FIX STEP == INF CASE
     //println!("PLAYER POS: {:?} RAY DIRECTION: {:?}", p.pos, ray.dir);
+
     'finding_wall: loop {
         let x_dir_oob: bool = out_of_world_bounds(x_axis_intersection);
         let y_dir_oob: bool = out_of_world_bounds(y_axis_intersection);
+
+        //println!("FINDING_WALL OOB? X:{:?}, Y:{:?}",x_dir_oob,y_dir_oob);
 
         let dist_x_inter = x_axis_intersection.dist(&p.pos);
         let dist_y_inter = y_axis_intersection.dist(&p.pos);
@@ -270,8 +294,9 @@ pub fn main() {
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
-    let texture_creator = canvas.texture_creator();
+    let mut debug_canvas = debug_window.into_canvas().build().unwrap();
 
+    let texture_creator = canvas.texture_creator();
     let mut texture = texture_creator
         .create_texture_streaming(PixelFormatEnum::RGB24, SCREEN_SIZE_X, SCREEN_SIZE_Y)
         .unwrap();
@@ -280,11 +305,11 @@ pub fn main() {
 
     let p: Player = Player {
         pos: Vec2 {
-            x: 2.0 * WORLD_CELL_SIZE as f32,
+            x: 7.0 * WORLD_CELL_SIZE as f32,
             y: 2.0 * WORLD_CELL_SIZE as f32,
         },
         dir: Vec2 {
-            x: f32::consts::FRAC_PI_2,
+            x: -f32::consts::FRAC_PI_2,
             y: f32::consts::FRAC_PI_2,
         },
     };
@@ -312,11 +337,9 @@ pub fn main() {
 
     debug_print_world(&theworld, p.pos);
 
-    // TODO!! MAKE THIS MORE UNIT TESTABLE
-    // TODO!! Find some way to edit the tileset easier
 
-    //TODO_FAR Move this to a seperate renderer file that takes the world ref
     //This function renders the raycast pixels to a pixel buffer. To be used with sdl_texture
+
     //TODO FINISH IT
     let render_statics = |buffer: &mut [u8], pitch: usize| {
         let world: &Vec<Vec<Wall>> = &theworld;
@@ -327,7 +350,7 @@ pub fn main() {
 
         let delta_theta_y = fov / SCREEN_SIZE_Y as f32;
 
-        //  Check nearest wall adjacent to current position, scans next needbe
+        //  Check nearest wall adjacent to current position, scans next need be
         //  Use distance for wall scaling
         //  figure out fish eye projection issue
 
@@ -336,6 +359,7 @@ pub fn main() {
             //println!("ITER {}", y);
             let ray: Ray2D = Ray2D::new(ray_curr_dir, p.pos.y);
             //println!("NEW RAY: {:?}",ray);
+            println!("RAY #Y: {:?} DIRR: {:?}", y, ray_curr_dir);
             let possible_wall : Option<(Wall, f32)> = find_wall_and_distance(world, p, ray);
             //TODO draw wall with height scaling
             if let Some((sampled_wall, _dist)) = possible_wall {
@@ -353,17 +377,19 @@ pub fn main() {
     let mut i = 0;
     'running: loop {
         let last_frame_instant = Instant::now();
-        //Draw floor
 
         let mut event_pump = sdl_context.event_pump().unwrap();
         draw_ceiling(&mut canvas);
         draw_floor(&mut canvas);
+
+        debug_draw_world(&mut debug_canvas, &theworld);
         //TODO Finish the statics renderer
         //Draw statics texture
         texture.with_lock(None, &render_statics).unwrap();
         canvas.copy(&texture, None, None).unwrap();
         //Present Frame
         canvas.present();
+        debug_canvas.present();
 
         let frame_duration = last_frame_instant.elapsed();
         delta = frame_duration.as_secs() as f64 + frame_duration.subsec_nanos() as f64 * 1e-9;
@@ -380,8 +406,12 @@ pub fn main() {
             }
         }
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
-        // The rest of the game loop goes here...
+
+
+
+
         // TODO Work on gameloop once renderer is up
+        // The rest of the game loop goes here...
     }
 
 
@@ -392,6 +422,10 @@ pub fn main() {
 // CURRENT : TODO gamestate -> pixel array (everything rendered to the window context texture)
 //           TODO Get raycaster to work on a collumn level then 2D stage
 //                Once simple colors are handled we should move to each wall having bitmap surfaces
+
+
+
+
 
 // Asset handling https://rust-sdl2.github.io/rust-sdl2/sdl2/image/index.html
 // ?Depth buffer
@@ -407,3 +441,6 @@ pub fn main() {
 // TODO tileset editor to create json verson of maps
 // TODO serialize maps to json
 // TODO load maps from json via file or text entry box
+
+// TODO CHORE: Find some way to edit the tileset easier
+//TODO_FAR Move this to a seperate renderer file that takes the world ref
