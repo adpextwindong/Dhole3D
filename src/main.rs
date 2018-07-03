@@ -26,6 +26,7 @@ use world::wall::NULL_COLOR as NULL_COLOR;
 use world::wall::FLOOR_GREY as FLOOR_GREY;
 use world::wall::RED as RED;
 use world::wall::GREEN as GREEN;
+use world::wall::BLUE as BLUE;
 
 use world::player::Player as Player;
 
@@ -141,11 +142,15 @@ fn find_next_cell_boundary(line_pos: f32, positive: bool) -> i32 {
 }
 
 fn out_of_world_bounds(pos: Vec2<f32>) -> bool {
-    if pos.x == std::f32::INFINITY || pos.y == std::f32::INFINITY || pos.x == -std::f32::INFINITY || pos.y == -std::f32::INFINITY {
-        return true;
+    if pos.x >= 0.0 && pos.y >= 0.0{
+        if pos.x == std::f32::INFINITY || pos.y == std::f32::INFINITY {
+            return true;
+        }else{
+            return (pos.x >= (WORLD_SIZE_X as f32 * WORLD_CELL_SIZE as f32)) ||
+                (pos.y >= (WORLD_SIZE_Y as f32 * WORLD_CELL_SIZE as f32))
+        }
     }else{
-        return (pos.x >= (WORLD_SIZE_X as f32 * WORLD_CELL_SIZE as f32)) ||
-            (pos.y >= (WORLD_SIZE_Y as f32 * WORLD_CELL_SIZE as f32))
+        return true;
     }
 
 }
@@ -200,14 +205,15 @@ fn find_axis_intersections(position : Vec2<f32>, ray: Ray2D) -> (Vec2<f32>, Vec2
     (x_axis_inter, y_axis_inter)
 }
 
-fn advance_x_intersection(x_axis_intersection : Vec2<f32>, y_step : f32) -> Vec2<f32> {
+fn advance_x_intersection(x_axis_intersection : &Vec2<f32>, y_step : f32) -> Vec2<f32> {
     Vec2 {
         x: x_axis_intersection.x + WORLD_CELL_SIZE as f32,
         y: x_axis_intersection.y + y_step,
     }
 }
 
-fn advance_y_intersection(y_axis_intersection : Vec2<f32>, x_step : f32) -> Vec2<f32> {
+//TODO clean this up
+fn advance_y_intersection(y_axis_intersection : &Vec2<f32>, x_step : f32) -> Vec2<f32> {
     Vec2 {
         x: y_axis_intersection.x + x_step,
         y: y_axis_intersection.y + WORLD_CELL_SIZE as f32,
@@ -230,49 +236,76 @@ fn gen_dda_steps(p : &Player, ray : &Ray2D) -> (f32,f32) {
     (xstep, ystep)
 }
 
-//TODO HEIGHT SCALING
+fn x_walk(theworld : &Vec<Vec<Wall>>, xstep : f32, dist_x_inter : f32, x_axis_intersection: &mut Vec2<f32>, ystep: f32) -> Option<(Wall,f32)>{
+    println!("X walk, xstep:{:?} x_dist:{:?}", xstep, dist_x_inter);
+    let potential_wall: Wall = get_world_cell_at_vec2_pos(x_axis_intersection.to_owned(), &theworld);
+    if potential_wall.full {
+        println!("WALL FOUND!!");
+        return Some((potential_wall, dist_x_inter))
+    } else {
+        *x_axis_intersection = advance_x_intersection(x_axis_intersection, ystep);
+        return None;
+    }
+}
+fn y_walk(theworld : &Vec<Vec<Wall>>, ystep : f32, dist_y_inter : f32, y_axis_intersection: &mut Vec2<f32>, xstep: f32) -> Option<(Wall,f32)>{
+    println!("Y walk, ystep:{:?} y_dist:{:?}", ystep, dist_y_inter);
+    let potential_wall : Wall = get_world_cell_at_vec2_pos(y_axis_intersection.to_owned(), theworld);
+    if potential_wall.full {
+        println!("WALL FOUND!!");
+        return Some((potential_wall, dist_y_inter));
+    }else{
+        //TODO clean this up
+        *y_axis_intersection = advance_y_intersection(y_axis_intersection, xstep);
+        return None;
+    }
+}
+
+//TODO CURRENT, HEIGHT SCALING
 ///DDA Algorithm using initial x and y axis intersections
 fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -> Option<(Wall, f32)> {
     let (xstep, ystep) = gen_dda_steps(p,&ray);
-    println!("RAY: {:?}",ray);
-    println!("STEPS X: {:?}, Y: {:?}", xstep, ystep);
-
     let (mut x_axis_intersection,mut y_axis_intersection) = find_axis_intersections(p.pos, ray);
 
-    //println!("\nSTEPS {:?} {:?}", xstep, ystep);
-    //TODO FIX STEP == INF CASE
-    //println!("PLAYER POS: {:?} RAY DIRECTION: {:?}", p.pos, ray.dir);
+    println!("RAY: {:?}",ray);
+    println!("STEPS X: {:?}, Y: {:?}", xstep, ystep);
+    println!("\nSTART STEPS {:?} {:?}", xstep, ystep); //TODO FIX STEP == INF CASE
+    println!("PLAYER POS: {:?} RAY DIRECTION: {:?}", p.pos, ray.dir);
 
     'finding_wall: loop {
         let x_dir_oob: bool = out_of_world_bounds(x_axis_intersection);
         let y_dir_oob: bool = out_of_world_bounds(y_axis_intersection);
 
-        //println!("FINDING_WALL OOB? X:{:?}, Y:{:?}",x_dir_oob,y_dir_oob);
-
         let dist_x_inter = x_axis_intersection.dist(&p.pos);
         let dist_y_inter = y_axis_intersection.dist(&p.pos);
 
+        let walk_res;
+
         if x_dir_oob && y_dir_oob { //The ray has hit out of bounds
+            //println!("Done, returning None");
             return None;
-        }else if dist_x_inter < dist_y_inter && !x_dir_oob { //Check X intersection on grid as its closer
-            //println!("X walk");
-            let potential_wall : Wall = get_world_cell_at_vec2_pos(x_axis_intersection, &theworld);
-            if potential_wall.full {
-                //println!("WALL FOUND!!");
-                return Some((potential_wall, dist_x_inter))
+        }else if(x_dir_oob){
+            //println!("FIRST PATH WALK");
+            walk_res = y_walk(theworld, ystep, dist_y_inter, &mut y_axis_intersection, xstep);
+        }else if(y_dir_oob){
+            //println!("SECOND PATH WALK");
+            walk_res = x_walk(theworld, xstep, dist_x_inter, &mut x_axis_intersection, ystep);
+        }else{
+            if(dist_x_inter <= dist_y_inter){
+                //println!("THIRD PATH WALK");
+                walk_res = x_walk(theworld, xstep, dist_x_inter, &mut x_axis_intersection, ystep);
             }else{
-                x_axis_intersection = advance_x_intersection(x_axis_intersection, ystep);
-            }
-        }else if !y_dir_oob { //Check Y intersection on grid as its closer
-            //println!("Y walk");
-            let potential_wall : Wall = get_world_cell_at_vec2_pos(y_axis_intersection, &theworld);
-            if potential_wall.full {
-                //println!("WALL FOUND!!");
-                return Some((potential_wall, dist_y_inter))
-            }else{
-                y_axis_intersection = advance_y_intersection(x_axis_intersection, xstep);
+                walk_res = y_walk(theworld, ystep, dist_y_inter, &mut y_axis_intersection, xstep);
             }
         }
+
+        if let Some((wall, dist)) = walk_res {
+            println!("THE WALL IS FOUND");
+            return Some((wall,dist));
+        }
+
+//        println!("Grab stdin");
+//        let mut stdin = io::stdin();
+//        let _ = stdin.read(&mut [0u8]).unwrap();
     }
 }
 
@@ -305,11 +338,11 @@ pub fn main() {
 
     let p: Player = Player {
         pos: Vec2 {
-            x: 7.0 * WORLD_CELL_SIZE as f32,
-            y: 2.0 * WORLD_CELL_SIZE as f32,
+            x: 1.0 * WORLD_CELL_SIZE as f32,
+            y: 1.0 * WORLD_CELL_SIZE as f32,
         },
         dir: Vec2 {
-            x: -f32::consts::FRAC_PI_2,
+            x: f32::consts::FRAC_PI_2,
             y: f32::consts::FRAC_PI_2,
         },
     };
@@ -325,14 +358,14 @@ pub fn main() {
         theworld[i][0] = red_wall;
         theworld[i][WORLD_SIZE_X as usize - 1 as usize] = red_wall;
     }
-    theworld[5][5] = Wall {
-        full: true,
-        color: GREEN,
-    };;
     theworld[5][2] = Wall {
         full: true,
+        color: BLUE,
+    };
+    theworld[5][4] = Wall {
+        full: true,
         color: GREEN,
-    };;
+    };
 
 
     debug_print_world(&theworld, p.pos);
@@ -373,6 +406,10 @@ pub fn main() {
     };
 
 
+    debug_print_player(p);
+    let mut stdin = io::stdin();
+    let _ = stdin.read(&mut [0u8]).unwrap();
+
     let mut delta: f64 = 0.0;
     let mut i = 0;
     'running: loop {
@@ -383,6 +420,7 @@ pub fn main() {
         draw_floor(&mut canvas);
 
         debug_draw_world(&mut debug_canvas, &theworld);
+
         //TODO Finish the statics renderer
         //Draw statics texture
         texture.with_lock(None, &render_statics).unwrap();
@@ -397,7 +435,8 @@ pub fn main() {
         //println!("{}", delta);
 
 
-        //debug_print_player(p);
+
+
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } |
