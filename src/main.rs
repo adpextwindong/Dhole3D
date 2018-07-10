@@ -181,13 +181,23 @@ fn debug_print_world(w: &Vec<Vec<Wall>>, p: &Player) {
     }
 }
 
+fn clear_texture(buffer: &mut [u8], pitch: usize){
+    for x in 0 .. SCREEN_SIZE_X as usize {
+        for y in 0 .. SCREEN_SIZE_Y as usize {
+            let offset = y * pitch + x * 3;
+            buffer[offset] = 0 as u8;
+            buffer[offset + 1] = 0 as u8;
+            buffer[offset + 2] = 0 as u8;
+        }
+    }
+}
 fn draw_col(buffer: &mut [u8], pitch: usize, x: usize, color: Color, dist: f32) {
-    //println!("SCALING BY DIST {:?}", dist);
-    //let h = SCREEN_SIZE_Y as f32 * dist; //This dist will have to be normalized for fix eye
-    //let col_start = h /2.0;
-    //let col_end = SCREEN_SIZE_Y as f32 - (h / 2.0);
+    println!("SCALING BY DIST {:?}", dist);
+    let h = SCREEN_SIZE_Y as f32 / dist * 25.0; //This dist will have to be normalized for fix eye
+    let col_start = h /2.0;
+    let col_end = SCREEN_SIZE_Y as f32 - (h / 2.0);
 
-    for y in 0  .. SCREEN_SIZE_Y as usize {
+    for y in col_start as usize .. col_end as usize {
         let offset = y * pitch + x * 3;
         buffer[offset] = color.r as u8;
         buffer[offset + 1] = color.g as u8;
@@ -408,6 +418,7 @@ pub fn main() {
     let mut delta: f64 = 0.0;
 
     'running: loop {
+        canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
         p.dir.normalize();
         let last_frame_instant = Instant::now();
@@ -422,6 +433,7 @@ pub fn main() {
         //Draw statics texture
         {
             let render_statics = |buffer: &mut [u8], pitch: usize| {
+                clear_texture(buffer, pitch);
                 let world: &Vec<Vec<Wall>> = &theworld;
                 let p_copy: Player = p;
 
@@ -437,7 +449,10 @@ pub fn main() {
                     if let Some((sampled_wall, dist)) = possible_wall {
 
                         let ang = ray.dir.norm().angle();
-                        let fixed_dist = (dist.x * f32::cos(ang)) + (dist.y * f32::sin(ang));
+                        let fixed_dist : f32 = Vec2{
+                            x: (dist.x * f32::cos(ang)) - (dist.y * f32::sin(ang)),
+                            y: (dist.x * f32::sin(ang)) + (dist.y * f32::cos(ang))
+                        }.length();
 
                         draw_col(buffer, pitch, y, sampled_wall.color, fixed_dist);
 
