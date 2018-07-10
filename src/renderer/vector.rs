@@ -33,10 +33,27 @@ impl<T: Float> Vec2<T>{
 
     pub fn norm(self) -> Vec2<T> {
         let l = self.length();
-        return Vec2::<T> { x: self.x / l, y: self.y };
+        return Vec2::<T> { x: self.x / l, y: self.y / l};
+    }
+    pub fn normalize(mut self) {
+        let l = self.length();
+        self.x = self.x / l;
+        self.y = self.y / l;
+    }
+
+    pub fn diff(&self, other: &Vec2<T>) -> Vec2<T>{
+        Vec2{
+            x: other.x - self.x,
+            y: other.y - self.y
+        }
+    }
+
+}
+impl Vec2<f32>{
+    pub fn angle(self) -> f32{
+        f32::atan2(self.y,self.x)
     }
 }
-
 //https://en.wikipedia.org/wiki/Rotation_matrix
 pub fn rotate_counter_clockwise(v: Vec2<f32>, theta: f32) -> Vec2<f32> {
     return Vec2 {

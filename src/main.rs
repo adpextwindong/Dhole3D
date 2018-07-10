@@ -4,11 +4,10 @@ extern crate shader_version;
 extern crate window;
 extern crate num_traits;
 
-#[macro_use]
-extern crate serde_derive;
+//extern crate serde_derive;
 
-extern crate serde;
-extern crate serde_json;
+//extern crate serde;
+//extern crate serde_json;
 // TODO Map serialization
 
 use std::f32;
@@ -63,6 +62,8 @@ const WORLD_CELL_SIZE: u32 = 10; // 10 Meters?
 const SCREEN_SIZE_X: u32 = 800;
 const SCREEN_SIZE_Y: u32 = 600;
 
+const FOV: f32 = f32::consts::FRAC_PI_2;
+const MOVE_RATE : f32 = 5.0;
 //TODO finish this
 //TODO Add filepath option or make an INTO/FROM for a load source
 
@@ -156,15 +157,15 @@ fn out_of_world_bounds(pos: Vec2<f32>) -> bool {
 }
 
 fn get_world_cell_at_vec2_pos(pos: Vec2<f32>, w: &Vec<Vec<Wall>>) -> Wall {
-    println!("GET_WORLD POS {:?}",pos);
+    //println!("GET_WORLD POS {:?}",pos);
     let x: usize = (pos.x.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
     let y: usize = (pos.y.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
     w[x][y]
 }
 
-fn debug_print_world(w: &Vec<Vec<Wall>>, pos : Vec2<f32>) {
-    let x: usize = (pos.x.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
-    let y: usize = (pos.y.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
+fn debug_print_world(w: &Vec<Vec<Wall>>, p: &Player) {
+    let x: usize = (p.pos.x.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
+    let y: usize = (p.pos.y.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
 
     for i in 0..WORLD_SIZE_Y {
         for j in 0..WORLD_SIZE_X {
@@ -180,8 +181,13 @@ fn debug_print_world(w: &Vec<Vec<Wall>>, pos : Vec2<f32>) {
     }
 }
 
-fn draw_col(buffer: &mut [u8], pitch: usize, x: usize, color: Color) {
-    for y in 0..SCREEN_SIZE_Y as usize {
+fn draw_col(buffer: &mut [u8], pitch: usize, x: usize, color: Color, dist: f32) {
+    //println!("SCALING BY DIST {:?}", dist);
+    //let h = SCREEN_SIZE_Y as f32 * dist; //This dist will have to be normalized for fix eye
+    //let col_start = h /2.0;
+    //let col_end = SCREEN_SIZE_Y as f32 - (h / 2.0);
+
+    for y in 0  .. SCREEN_SIZE_Y as usize {
         let offset = y * pitch + x * 3;
         buffer[offset] = color.r as u8;
         buffer[offset + 1] = color.g as u8;
@@ -236,22 +242,22 @@ fn gen_dda_steps(p : &Player, ray : &Ray2D) -> (f32,f32) {
     (xstep, ystep)
 }
 
-fn x_walk(theworld : &Vec<Vec<Wall>>, xstep : f32, dist_x_inter : f32, x_axis_intersection: &mut Vec2<f32>, ystep: f32) -> Option<(Wall,f32)>{
-    println!("X walk, xstep:{:?} x_dist:{:?}", xstep, dist_x_inter);
+fn x_walk(theworld : &Vec<Vec<Wall>>, xstep : f32, dist_x_inter : Vec2<f32>, x_axis_intersection: &mut Vec2<f32>, ystep: f32) -> Option<(Wall,Vec2<f32>)>{
+    //println!("X walk, xstep:{:?} x_dist:{:?}", xstep, dist_x_inter);
     let potential_wall: Wall = get_world_cell_at_vec2_pos(x_axis_intersection.to_owned(), &theworld);
     if potential_wall.full {
-        println!("WALL FOUND!!");
+        //println!("WALL FOUND!!");
         return Some((potential_wall, dist_x_inter))
     } else {
         *x_axis_intersection = advance_x_intersection(x_axis_intersection, ystep);
         return None;
     }
 }
-fn y_walk(theworld : &Vec<Vec<Wall>>, ystep : f32, dist_y_inter : f32, y_axis_intersection: &mut Vec2<f32>, xstep: f32) -> Option<(Wall,f32)>{
-    println!("Y walk, ystep:{:?} y_dist:{:?}", ystep, dist_y_inter);
+fn y_walk(theworld : &Vec<Vec<Wall>>, ystep : f32, dist_y_inter : Vec2<f32>, y_axis_intersection: &mut Vec2<f32>, xstep: f32) -> Option<(Wall,Vec2<f32>)>{
+    //println!("Y walk, ystep:{:?} y_dist:{:?}", ystep, dist_y_inter);
     let potential_wall : Wall = get_world_cell_at_vec2_pos(y_axis_intersection.to_owned(), theworld);
     if potential_wall.full {
-        println!("WALL FOUND!!");
+        //println!("WALL FOUND!!");
         return Some((potential_wall, dist_y_inter));
     }else{
         //TODO clean this up
@@ -262,35 +268,40 @@ fn y_walk(theworld : &Vec<Vec<Wall>>, ystep : f32, dist_y_inter : f32, y_axis_in
 
 //TODO CURRENT, HEIGHT SCALING
 ///DDA Algorithm using initial x and y axis intersections
-fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -> Option<(Wall, f32)> {
+fn
+find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -> Option<(Wall, Vec2<f32>)> {
     let (xstep, ystep) = gen_dda_steps(p,&ray);
     let (mut x_axis_intersection,mut y_axis_intersection) = find_axis_intersections(p.pos, ray);
 
-    println!("RAY: {:?}",ray);
-    println!("STEPS X: {:?}, Y: {:?}", xstep, ystep);
-    println!("\nSTART STEPS {:?} {:?}", xstep, ystep); //TODO FIX STEP == INF CASE
-    println!("PLAYER POS: {:?} RAY DIRECTION: {:?}", p.pos, ray.dir);
+//    debug_print_world(theworld, p.pos);
+//    println!("RAY: {:?}",ray);
+//    println!("STEPS X: {:?}, Y: {:?}", xstep, ystep);
+//    println!("\nSTART STEPS {:?} {:?}", xstep, ystep); //TODO FIX STEP == INF CASE
+    //println!("PLAYER POS: {:?} RAY DIRECTION: {:?}", p.pos, ray.dir);
 
     'finding_wall: loop {
         let x_dir_oob: bool = out_of_world_bounds(x_axis_intersection);
         let y_dir_oob: bool = out_of_world_bounds(y_axis_intersection);
 
-        let dist_x_inter = x_axis_intersection.dist(&p.pos);
-        let dist_y_inter = y_axis_intersection.dist(&p.pos);
+        let dist_x_inter = x_axis_intersection.diff(&p.pos);
+        let dist_y_inter = y_axis_intersection.diff(&p.pos);
+
+        //let dist_x_inter = x_axis_intersection.dist(&p.pos);
+        //let dist_y_inter = y_axis_intersection.dist(&p.pos);
 
         let walk_res;
 
         if x_dir_oob && y_dir_oob { //The ray has hit out of bounds
             //println!("Done, returning None");
             return None;
-        }else if(x_dir_oob){
+        }else if x_dir_oob {
             //println!("FIRST PATH WALK");
             walk_res = y_walk(theworld, ystep, dist_y_inter, &mut y_axis_intersection, xstep);
-        }else if(y_dir_oob){
+        }else if y_dir_oob {
             //println!("SECOND PATH WALK");
             walk_res = x_walk(theworld, xstep, dist_x_inter, &mut x_axis_intersection, ystep);
         }else{
-            if(dist_x_inter <= dist_y_inter){
+            if dist_x_inter.length() <= dist_y_inter.length()  {
                 //println!("THIRD PATH WALK");
                 walk_res = x_walk(theworld, xstep, dist_x_inter, &mut x_axis_intersection, ystep);
             }else{
@@ -299,7 +310,7 @@ fn find_wall_and_distance(theworld: &Vec<Vec<Wall>>, p : &Player, ray : Ray2D) -
         }
 
         if let Some((wall, dist)) = walk_res {
-            println!("THE WALL IS FOUND");
+            //println!("THE WALL IS FOUND");
             return Some((wall,dist));
         }
 
@@ -336,83 +347,69 @@ pub fn main() {
 
     let mut theworld = gen_blank_world(WORLD_SIZE_X, WORLD_SIZE_Y);
 
-    let p: Player = Player {
+    let mut p: Player = Player {
         pos: Vec2 {
-            x: 1.0 * WORLD_CELL_SIZE as f32,
-            y: 1.0 * WORLD_CELL_SIZE as f32,
+            x: 5.0 * WORLD_CELL_SIZE as f32,
+            y: 5.0 * WORLD_CELL_SIZE as f32,
         },
         dir: Vec2 {
-            x: f32::consts::FRAC_PI_2,
-            y: f32::consts::FRAC_PI_2,
+            x: 0.0,//f32::consts::FRAC_PI_2,
+            y: 1.0//f32::consts::FRAC_PI_2,
         },
     };
+
+    p.dir.normalize();
+
+
+    assert!(!(p.dir.x == 0.0 && p.dir.y == 0.0));
+    //Dir not equal to null vector
 
     let red_wall = Wall {
         full: true,
         color: RED,
     };
-    for i in 0..WORLD_SIZE_X as usize {
-        theworld[0][i] = red_wall;
-        theworld[WORLD_SIZE_Y as usize - 1 as usize][i] = red_wall;
-
-        theworld[i][0] = red_wall;
-        theworld[i][WORLD_SIZE_X as usize - 1 as usize] = red_wall;
-    }
-    theworld[5][2] = Wall {
+    let blue_wall = Wall {
         full: true,
         color: BLUE,
     };
-    theworld[5][4] = Wall {
+    let green_wall = Wall {
         full: true,
         color: GREEN,
     };
 
+    for i in 0..WORLD_SIZE_X as usize {
+        theworld[0][i] = red_wall;
+        theworld[WORLD_SIZE_Y as usize - 1 as usize][i] = green_wall;
+//
+        theworld[i][0] = blue_wall;
+        theworld[i][WORLD_SIZE_X as usize - 1 as usize] = green_wall;
+    }
+    //NOW Test up down and left right
 
-    debug_print_world(&theworld, p.pos);
+//    theworld[5][2] = Wall {
+//        full: true,
+//        color: BLUE,
+//    };
+//    theworld[5][4] = Wall {
+//        full: true,
+//        color: GREEN,
+//    };
+
+
+    debug_print_world(&theworld, &p);
 
 
     //This function renders the raycast pixels to a pixel buffer. To be used with sdl_texture
 
-    //TODO FINISH IT
-    let render_statics = |buffer: &mut [u8], pitch: usize| {
-        let world: &Vec<Vec<Wall>> = &theworld;
-        let p: &Player = &p;
-
-        let fov = f32::consts::FRAC_PI_2;
-        let mut ray_curr_dir = rotate_counter_clockwise(p.dir, fov / 2.0);
-
-        let delta_theta_y = fov / SCREEN_SIZE_Y as f32;
-
-        //  Check nearest wall adjacent to current position, scans next need be
-        //  Use distance for wall scaling
-        //  figure out fish eye projection issue
-
-        // Cast Ray
-        'raycasting: for y in 0..SCREEN_SIZE_Y as usize {
-            //println!("ITER {}", y);
-            let ray: Ray2D = Ray2D::new(ray_curr_dir, p.pos.y);
-            //println!("NEW RAY: {:?}",ray);
-            println!("RAY #Y: {:?} DIRR: {:?}", y, ray_curr_dir);
-            let possible_wall : Option<(Wall, f32)> = find_wall_and_distance(world, p, ray);
-            //TODO draw wall with height scaling
-            if let Some((sampled_wall, _dist)) = possible_wall {
-                draw_col(buffer, pitch, y, sampled_wall.color);
-            }
-
-            ray_curr_dir = rotate_clockwise(ray_curr_dir, delta_theta_y);
-        }
-        //let mut stdin = io::stdin();
-        //let _ = stdin.read(&mut [0u8]).unwrap();
-    };
-
-
     debug_print_player(p);
-    let mut stdin = io::stdin();
-    let _ = stdin.read(&mut [0u8]).unwrap();
+//    let mut stdin = io::stdin();
+//    let _ = stdin.read(&mut [0u8]).unwrap();
 
     let mut delta: f64 = 0.0;
-    let mut i = 0;
+
     'running: loop {
+        canvas.clear();
+        p.dir.normalize();
         let last_frame_instant = Instant::now();
 
         let mut event_pump = sdl_context.event_pump().unwrap();
@@ -423,63 +420,89 @@ pub fn main() {
 
         //TODO Finish the statics renderer
         //Draw statics texture
-        texture.with_lock(None, &render_statics).unwrap();
+        {
+            let render_statics = |buffer: &mut [u8], pitch: usize| {
+                let world: &Vec<Vec<Wall>> = &theworld;
+                let p_copy: Player = p;
+
+
+                let mut ray_curr_dir = rotate_counter_clockwise(p_copy.dir, FOV / 2.0);
+
+                let delta_theta_y = FOV / SCREEN_SIZE_X as f32;
+
+                'raycasting: for mut y in 0..SCREEN_SIZE_X as usize {
+                    let ray: Ray2D = Ray2D::new(ray_curr_dir, p_copy.pos.y);
+                    let possible_wall : Option<(Wall, Vec2<f32>)> = find_wall_and_distance(world, &p_copy, ray);
+
+                    if let Some((sampled_wall, dist)) = possible_wall {
+
+                        let ang = ray.dir.norm().angle();
+                        let fixed_dist = (dist.x * f32::cos(ang)) + (dist.y * f32::sin(ang));
+
+                        draw_col(buffer, pitch, y, sampled_wall.color, fixed_dist);
+
+                    }
+                    ray_curr_dir = rotate_clockwise(ray_curr_dir, delta_theta_y);
+                }
+            };
+            texture.with_lock(None, &render_statics).unwrap();
+        }
         canvas.copy(&texture, None, None).unwrap();
+
+
         //Present Frame
         canvas.present();
         debug_canvas.present();
 
-        let frame_duration = last_frame_instant.elapsed();
-        delta = frame_duration.as_secs() as f64 + frame_duration.subsec_nanos() as f64 * 1e-9;
-
-        //println!("{}", delta);
-
-
-
+//        let frame_duration = last_frame_instant.elapsed();
+//        delta = frame_duration.as_secs() as f64 + frame_duration.subsec_nanos() as f64 * 1e-9;
+//        println!("{}", delta);
 
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } |
+
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
+
+                Event::KeyDown {keycode : Some(Keycode::W) ,.. } =>{
+                    if p.pos.x < (WORLD_SIZE_X as u32 * WORLD_CELL_SIZE- 1) as f32 {
+                        p.pos.x += 1.0 * MOVE_RATE;
+                    }
+                    //println!("Move right");
+                    debug_print_world(&theworld, &p);
+                },
+                Event::KeyDown {keycode : Some(Keycode::S) ,.. } =>{
+                    if p.pos.x > (1) as f32 {
+                        p.pos.x -= 1.0 * MOVE_RATE;
+                    }
+                    //println!("Move left");
+                    debug_print_world(&theworld, &p);
+                },
+                Event::KeyDown {keycode : Some(Keycode::A) ,.. } =>{
+//                    if p.pos.y < (WORLD_SIZE_Y as u32 * WORLD_CELL_SIZE - 1) as f32 {
+//                        p.pos.y += 1.0;
+//                    }
+                    //println!("Move up");
+                    p.dir = rotate_counter_clockwise(p.dir, FOV / 15.0);
+
+                    debug_print_world(&theworld, &p);
+                },
+                Event::KeyDown {keycode : Some(Keycode::D) ,.. } =>{
+//                    if p.pos.y > (1) as f32 {
+//                        p.pos.y -= 1.0;
+//                    }
+                    p.dir = rotate_clockwise(p.dir, FOV / 15.0);
+                    //println!("Move down");
+                    debug_print_world(&theworld, &p);
+                },
                 _ => {}
             }
         }
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
 
-
-
-
         // TODO Work on gameloop once renderer is up
         // The rest of the game loop goes here...
     }
 
-
-    println!("Frame Delta : {}", delta);
+//    println!("Frame Delta : {}", delta);
 }
-
-// NOTES
-// CURRENT : TODO gamestate -> pixel array (everything rendered to the window context texture)
-//           TODO Get raycaster to work on a collumn level then 2D stage
-//                Once simple colors are handled we should move to each wall having bitmap surfaces
-
-
-
-
-
-// Asset handling https://rust-sdl2.github.io/rust-sdl2/sdl2/image/index.html
-// ?Depth buffer
-// TODO Move graphics code to renderer module
-// TODO Add headbob (I guess their has to be a basic player height) to make moving around seem real
-// TODO_FAR Gamestate handler, actual game once initial graphics are up
-
-// TODO work on documentation of how the engine works so its easy to come back to
-// world is 2d matrix of walls for now
-// world -> pixel_array
-
-// #Nice things
-// TODO tileset editor to create json verson of maps
-// TODO serialize maps to json
-// TODO load maps from json via file or text entry box
-
-// TODO CHORE: Find some way to edit the tileset easier
-//TODO_FAR Move this to a seperate renderer file that takes the world ref

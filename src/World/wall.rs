@@ -1,5 +1,6 @@
 use sdl2::pixels::Color;
 
+// TODO Add surface/texutre part
 #[derive(Copy, Clone, Debug)]
 pub struct Wall {
     pub full: bool,
