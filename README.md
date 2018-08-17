@@ -25,3 +25,13 @@ vs
 ``` cargo run ```
 
 I just benchmarked the regular run and --release version and theres a 10x speedup.
+
+## Progress
+
+So far it looks like this:
+
+![](resources/good_progress.png)
+
+and this:
+
+![](resources/bad_progress.png)

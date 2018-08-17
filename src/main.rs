@@ -192,7 +192,7 @@ fn clear_texture(buffer: &mut [u8], pitch: usize){
     }
 }
 fn draw_col(buffer: &mut [u8], pitch: usize, x: usize, color: Color, dist: f32) {
-    println!("SCALING BY DIST {:?}", dist);
+    //println!("SCALING BY DIST {:?}", dist);
     let h = SCREEN_SIZE_Y as f32 / dist * 25.0; //This dist will have to be normalized for fix eye
     let col_start = h /2.0;
     let col_end = SCREEN_SIZE_Y as f32 - (h / 2.0);
