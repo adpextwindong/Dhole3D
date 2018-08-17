@@ -206,8 +206,8 @@ fn draw_col(buffer: &mut [u8], pitch: usize, x: usize, color: Color, dist: f32) 
 }
 
 fn find_axis_intersections(position : Vec2<f32>, ray: Ray2D) -> (Vec2<f32>, Vec2<f32>){
-    let a_x = find_next_cell_boundary(position.x, true);
-    let b_y = find_next_cell_boundary(position.y, true);
+    let a_x = find_next_cell_boundary(position.x, ray.dir.x.is_sign_positive());
+    let b_y = find_next_cell_boundary(position.y, ray.dir.y.is_sign_positive());
 
     let x_axis_inter: Vec2<f32> = Vec2::<f32> {
         x: a_x as f32,
