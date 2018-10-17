@@ -25,21 +25,19 @@ use renderer::ray2D::Ray2D;
 
 pub const FOV: f32 = f32::consts::FRAC_PI_2;
 
-pub struct renderer<'a,'b>{
+pub struct renderer<'a>{
     canvas: &'a mut Canvas<Window>,
-    texture: &'b mut Texture<'b>
 }
 
 
-impl<'a,'b> renderer<'a,'b>{
-    pub fn new(canvas : &'a mut Canvas<Window>, texture: &'b mut Texture<'b>) -> renderer<'a,'b>{
-        renderer{
+impl<'a> renderer<'a> {
+    pub fn new(canvas: &'a mut Canvas<Window>) -> renderer<'a> {
+        renderer {
             canvas,
-            texture
         }
     }
 
-    pub fn draw_frame(&mut self, theworld: &Vec<Vec<Wall>>, p: &Player){
+    pub fn draw_frame(&mut self, texture: &mut Texture,theworld: &Vec<Vec<Wall>>, p: &Player){
 
         self.draw_ceiling();
         self.draw_floor();
@@ -74,9 +72,9 @@ impl<'a,'b> renderer<'a,'b>{
                 }
             };
 
-            self.texture.with_lock(None, &statics_renderer).unwrap();
+            texture.with_lock(None, &statics_renderer).unwrap();
         }
-        self.canvas.copy(&self.texture, None, None).unwrap();
+        self.canvas.copy(texture, None, None).unwrap();
         //Present Frame
         self.canvas.present();
     }
