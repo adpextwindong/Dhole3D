@@ -69,3 +69,14 @@ pub fn rotate_clockwise(v: Vec2<f32>, theta: f32) -> Vec2<f32> {
     };
 }
 
+#[cfg(test)]
+mod tests{
+    #![allow(dead_code)]
+    #![allow(unused_imports)]
+    #![allow(unused_variables)]
+    #![allow(unused_mut)]
+    #![allow(deprecated)]
+    #![allow(unused_macros)]
+
+    use super::*;
+}
