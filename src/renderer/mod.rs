@@ -16,6 +16,7 @@ use world::player::Player;
 use super::SCREEN_SIZE_X;
 use super::SCREEN_SIZE_Y;
 use world::wall::FLOOR_GREY;
+use world::WORLD_CELL_SIZE;
 
 use renderer::vector::rotate_clockwise;
 use renderer::vector::rotate_counter_clockwise;
@@ -110,12 +111,22 @@ fn clear_texture(buffer: &mut [u8], pitch: usize){
 
 fn draw_col(buffer: &mut [u8], pitch: usize, x: usize, color: Color, dist: f32) {
     //println!("SCALING BY DIST {:?}", dist);
-    let h = SCREEN_SIZE_Y as f32 / dist * 25.0; //This dist will have to be normalized for fix eye
+    let h = SCREEN_SIZE_Y as f32 / dist * WORLD_CELL_SIZE as f32; //This dist will have to be normalized for fix eye
     let col_start = h /2.0;
-    let col_end = SCREEN_SIZE_Y as f32 - (h / 2.0);
+    let mut clamp_end = SCREEN_SIZE_Y as f32 - (h / 2.0);
+    if(clamp_end < 0.0){
+        clamp_end = 0.0;
+    }
+    let col_end = clamp_end;
 
+
+//    println!("X is :{:?}, col start :{:?}, col end :{:?}", x, col_start, col_end);
     for y in col_start as usize .. col_end as usize {
         let offset = y * pitch + x * 3;
+//        if(offset > (SCREEN_SIZE_Y*SCREEN_SIZE_X*3) as usize){
+//            println!("y is :{:?}", y);
+//        }
+//        assert!(offset < (SCREEN_SIZE_Y*SCREEN_SIZE_X*3) as usize);
         buffer[offset] = color.r as u8;
         buffer[offset + 1] = color.g as u8;
         buffer[offset + 2] = color.b as u8;
