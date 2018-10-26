@@ -40,7 +40,7 @@ pub fn out_of_world_bounds(pos: Vec2<f32>) -> bool {
     }
 
 }
-
+//TODO TEST THIS
 pub fn get_world_cell_at_vec2_pos(pos: Vec2<f32>, w: &Vec<Vec<Wall>>) -> Wall {
     //println!("GET_WORLD POS {:?}",pos);
     let x: usize = (pos.x.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
