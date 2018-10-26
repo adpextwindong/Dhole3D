@@ -9,7 +9,9 @@ use SCREEN_SIZE_Y;
 use world::WORLD_SIZE_Y;
 use world::WORLD_SIZE_X;
 use world::WORLD_CELL_SIZE;
+use renderer::vector::Vec2;
 
+const RECT_SIZE: u32 = SCREEN_SIZE_Y / WORLD_SIZE_Y as u32;
 
 //TODO maybe need scaling/moving around for bigger maps but we can refactor that later.
 pub fn debug_draw_world(canvas: &mut Canvas<Window>, w : &Vec<Vec<Wall>>, p: &Player) {
@@ -19,26 +21,9 @@ pub fn debug_draw_world(canvas: &mut Canvas<Window>, w : &Vec<Vec<Wall>>, p: &Pl
         b: 128,
         a: 255,
     });
-    canvas.fill_rect(None).unwrap();
+    canvas.fill_rect(None).unwrap(); //Reset canvas to gray
 
-    let rect_size = SCREEN_SIZE_Y / WORLD_SIZE_Y as u32;
-    let mut recs = Vec::<Rect>::with_capacity(WORLD_SIZE_X * WORLD_SIZE_Y as usize);
-    for x in 0..WORLD_SIZE_X as i32{
-        for y in 0..WORLD_SIZE_Y as i32{
-            let frame = Rect::new(x * rect_size as i32, y * rect_size as i32, rect_size, rect_size);
-
-            recs.push(frame);
-        }
-    }
-    canvas.draw_rects(&recs).unwrap();
-
-    for x in 0..WORLD_SIZE_X as i32{
-        for y in 0..WORLD_SIZE_Y as i32{
-            let grid_content = Rect::new((x * rect_size as i32) + 1 as i32, (y * rect_size as i32) + 1 as i32, rect_size - 2, rect_size - 2);
-            canvas.set_draw_color(w[x as usize][y as usize].color);
-            canvas.fill_rect(grid_content).unwrap();
-        }
-    }
+    draw_cells(canvas, w);
 
     canvas.set_draw_color(Color{
         r: 255,
@@ -46,12 +31,15 @@ pub fn debug_draw_world(canvas: &mut Canvas<Window>, w : &Vec<Vec<Wall>>, p: &Pl
         b: 0,
         a: 255,
     });
+
+    let debug_screen_player_pos = wc2debug_coordinates(p.pos);
     canvas.fill_rect(
         Rect::new(
-            ((p.pos.x / WORLD_CELL_SIZE as f32 ) as u32 * rect_size) as i32,
-            ((p.pos.y / WORLD_CELL_SIZE as f32 ) as u32 * rect_size) as i32,
-            rect_size / 3,
-            rect_size / 3
+            debug_screen_player_pos.x as i32,
+            debug_screen_player_pos.y as i32,
+            5,
+            5
+
         )
     ).unwrap();
 //    canvas.circle(
@@ -66,6 +54,24 @@ pub fn debug_draw_world(canvas: &mut Canvas<Window>, w : &Vec<Vec<Wall>>, p: &Pl
 //        }
 //    ).unwrap();
 
+}
+
+fn draw_cells(canvas: &mut Canvas<Window>, w : &Vec<Vec<Wall>>) {
+    for x in 0..WORLD_SIZE_X as i32{
+        for y in 0..WORLD_SIZE_Y as i32{
+            let grid_content = Rect::new((x * RECT_SIZE as i32) + 1 as i32, (y * RECT_SIZE as i32) + 1 as i32, RECT_SIZE - 1, RECT_SIZE - 1);
+            canvas.set_draw_color(w[x as usize][y as usize].color);
+            canvas.fill_rect(grid_content).unwrap();
+        }
+    }
+}
+
+fn wc2debug_coordinates(pos :Vec2<f32>) -> Vec2<f32>{
+    let scale = RECT_SIZE as f32 / WORLD_CELL_SIZE as f32;
+    Vec2{
+        x: pos.x * scale,
+        y: pos.y * scale
+    }
 }
 
 pub fn debug_print_player(p: Player) {

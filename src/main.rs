@@ -10,11 +10,12 @@ extern crate num_traits;
 use std::time::{Duration};
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
+
 
 mod world;
 mod renderer;
 mod debug_window;
+mod keyhandler;
 
 use world::test_util::generate_test_world;
 use world::WORLD_SIZE_X;
@@ -23,14 +24,11 @@ use world::player::MOVE_RATE;
 use renderer::FOV;
 use renderer::vector::rotate_clockwise;
 use renderer::vector::rotate_counter_clockwise;
+use keyhandler::handle_events;
 
 //TODO make this a startup option or something
 const SCREEN_SIZE_X: u32 = 800;
 const SCREEN_SIZE_Y: u32 = 600;
-
-
-
-
 
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -42,12 +40,12 @@ pub fn main() {
         .build()
         .unwrap();
 
-//    let debug_window = video_subsystem
-//        .window("rust-sdl2 demo: Debug Window", SCREEN_SIZE_X, SCREEN_SIZE_Y)
-//        .position_centered()
-//        .opengl()
-//        .build()
-//        .unwrap();
+    let debug_window = video_subsystem
+        .window("rust-sdl2 demo: Debug Window", SCREEN_SIZE_X, SCREEN_SIZE_Y)
+        .position_centered()
+        .opengl()
+        .build()
+        .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
     let texture_creator = canvas.texture_creator();
@@ -57,15 +55,15 @@ pub fn main() {
 
     let (theworld,mut p) = generate_test_world();
 
-//    let mut debug_canvas = debug_window.into_canvas().build().unwrap();
+    let mut debug_canvas = debug_window.into_canvas().build().unwrap();
 //    debug_window::debug_print_world(&theworld, &p);
-//    debug_window::debug_print_player(p);
+    debug_window::debug_print_player(p);
 
     'running: loop {
         let mut event_pump = sdl_context.event_pump().unwrap();
         p.dir.normalize();
-//        debug_window::debug_draw_world(&mut debug_canvas, &theworld, &p);
-
+        debug_window::debug_draw_world(&mut debug_canvas, &theworld, &p);
+        debug_window::debug_print_player(p);
         //========
         //RENDERER
         {
@@ -75,49 +73,12 @@ pub fn main() {
         //RENDERER
         //========
 
-
-
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Quit { .. } |
-
-                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
-
-                Event::KeyDown {keycode : Some(Keycode::W) ,.. } =>{
-                    if p.pos.x < (WORLD_SIZE_X as u32 * WORLD_CELL_SIZE - 1) as f32 {
-                        p.pos.x += 1.0 * MOVE_RATE;
-                    }
-                    //println!("Move right");
-//                    debug_window::debug_print_world(&theworld, &p);
-                },
-                Event::KeyDown {keycode : Some(Keycode::S) ,.. } =>{
-                    if p.pos.x > (1) as f32 {
-                        p.pos.x -= 1.0 * MOVE_RATE;
-                    }
-                    //println!("Move left");
-//                    debug_window::debug_print_world(&theworld, &p);
-                },
-                Event::KeyDown {keycode : Some(Keycode::A) ,.. } =>{
-//                    if p.pos.y < (WORLD_SIZE_Y as u32 * WORLD_CELL_SIZE - 1) as f32 {
-//                        p.pos.y += 1.0;
-//                    }
-                    //println!("Move up");
-                    p.dir = rotate_counter_clockwise(p.dir, FOV / 15.0);
-
-//                    debug_window::debug_print_world(&theworld, &p);
-                },
-                Event::KeyDown {keycode : Some(Keycode::D) ,.. } =>{
-//                    if p.pos.y > (1) as f32 {
-//                        p.pos.y -= 1.0;
-//                    }
-                    p.dir = rotate_clockwise(p.dir, FOV / 15.0);
-                    //println!("Move down");
-//                    debug_window::debug_print_world(&theworld, &p);
-                },
-                _ => {}
-            }
+        if let Some(bad_event) = handle_events(event_pump, &theworld, &mut p) {
+            print!("Recieved event: {:?}. Shutting down.", bad_event);
+            break 'running;
         }
-//        debug_canvas.present();
+
+        debug_canvas.present();
 
 
 

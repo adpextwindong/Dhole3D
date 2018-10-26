@@ -1,5 +1,6 @@
-use std::ops::Div;
+use std::ops::{Add, Div};
 use num_traits::Float as Float;
+use std::ops::AddAssign;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Vec2<T> {
@@ -48,12 +49,37 @@ impl<T: Float> Vec2<T>{
         }
     }
 
+    pub fn scale(self, scale : T) -> Vec2<T> {
+        Vec2{
+            x: self.x * scale,
+            y: self.y * scale
+        }
+    }
 }
 impl Vec2<f32>{
     pub fn angle(self) -> f32{
         f32::atan2(self.y,self.x)
     }
 }
+
+impl<T: Float> Add<Vec2<T>> for Vec2<T> {
+    type Output = Vec2<T>;
+
+    fn add(self, rhs: Vec2<T>) -> <Self as Add<Vec2<T>>>::Output {
+        Vec2{
+            x: self.x + rhs.x,
+            y: self.y + rhs.y
+        }
+    }
+}
+
+impl<T: Float> AddAssign<Vec2<T>> for Vec2<T> {
+    fn add_assign(&mut self, rhs: Vec2<T>){
+        self.x = self.x + rhs.x;
+        self.y = self.y + rhs.y;
+    }
+}
+
 //https://en.wikipedia.org/wiki/Rotation_matrix
 pub fn rotate_counter_clockwise(v: Vec2<f32>, theta: f32) -> Vec2<f32> {
     return Vec2 {
