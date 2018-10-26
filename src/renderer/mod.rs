@@ -40,12 +40,12 @@ impl<'a> renderer<'a> {
 
     pub fn draw_frame(&mut self, texture: &mut Texture,theworld: &Vec<Vec<Wall>>, p: &Player){
 
-        self.draw_ceiling();
-        self.draw_floor();
-
         {//TODO Draw statics texture
             let statics_renderer = |buffer: &mut [u8], pitch: usize| {
-                clear_texture(buffer, pitch);
+//                clear_texture(buffer, pitch);
+                draw_ceiling(buffer, pitch);
+                draw_floor(buffer, pitch);
+
                 let world: &Vec<Vec<Wall>> = &theworld;
                 let p_copy: Player = *p;
 
@@ -83,19 +83,7 @@ impl<'a> renderer<'a> {
     //TODO make these colors world constants
     //TODO_FAR add support for different colored ceilings
     //      and actually make them world surfaces once we get to true'r 3d
-    fn draw_ceiling(&mut self) {
-        self.canvas.set_draw_color(Color::RGB(0, 0, 0));
-        self.canvas.clear();
-    }
 
-    fn draw_floor(&mut self) {
-        self.canvas.set_draw_color(FLOOR_GREY);
-        let pos_y = SCREEN_SIZE_Y as i32 / 2;
-        let size_y = SCREEN_SIZE_Y as i32 / 2;
-        self.canvas
-            .fill_rect(Rect::new(0, pos_y, SCREEN_SIZE_X, size_y as u32))
-            .unwrap();
-    }
 }
 
 fn clear_texture(buffer: &mut [u8], pitch: usize){
@@ -105,6 +93,30 @@ fn clear_texture(buffer: &mut [u8], pitch: usize){
             buffer[offset] = 0 as u8;
             buffer[offset + 1] = 0 as u8;
             buffer[offset + 2] = 0 as u8;
+        }
+    }
+}
+
+fn draw_ceiling(buffer: &mut [u8], pitch: usize) {
+    for x in 0 .. SCREEN_SIZE_X as usize {
+        for y in 0 .. (SCREEN_SIZE_Y / 2) as usize {
+            let offset = y * pitch + x * 3;
+            buffer[offset] = 0 as u8;
+            buffer[offset + 1] = 0 as u8;
+            buffer[offset + 2] = 0 as u8;
+        }
+    }
+}
+
+fn draw_floor(buffer: &mut [u8], pitch: usize) {
+    let pos_y = SCREEN_SIZE_Y as usize / 2;
+
+    for x in 0..SCREEN_SIZE_X as usize {
+        for y in pos_y..SCREEN_SIZE_Y as usize {
+            let offset = y * pitch + x * 3;
+            buffer[offset] = FLOOR_GREY.r as u8;
+            buffer[offset + 1] = FLOOR_GREY.g as u8;
+            buffer[offset + 2] = FLOOR_GREY.b as u8;
         }
     }
 }
