@@ -1,6 +1,7 @@
-use std::ops::{Add, Div};
+use std::ops::{Add, Sub, Div};
 use num_traits::Float as Float;
 use std::ops::AddAssign;
+use sdl2::rect::Point;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Vec2<T> {
@@ -42,6 +43,14 @@ impl<T: Float> Vec2<T>{
         self.y = self.y / l;
     }
 
+    pub fn normalized(self) -> Vec2<T>{
+        let l = self.length();
+        Vec2{
+            x: self.x / l,
+            y: self.y / l
+        }
+    }
+
     pub fn diff(&self, other: &Vec2<T>) -> Vec2<T>{
         Vec2{
             x: other.x - self.x,
@@ -72,6 +81,17 @@ impl<T: Float> Add<Vec2<T>> for Vec2<T> {
         }
     }
 }
+impl<T: Float> Sub<Vec2<T>> for Vec2<T> {
+    type Output = Vec2<T>;
+
+    fn sub(self, rhs: Vec2<T>) -> <Self as Sub<Vec2<T>>>::Output {
+        Vec2{
+            x: self.x - rhs.x,
+            y: self.y - rhs.y
+        }
+    }
+}
+
 
 impl<T: Float> AddAssign<Vec2<T>> for Vec2<T> {
     fn add_assign(&mut self, rhs: Vec2<T>){
