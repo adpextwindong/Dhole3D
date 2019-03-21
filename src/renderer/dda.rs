@@ -73,7 +73,13 @@ fn check_over_y_step(gs : &GameState, xstep : f32,ystep: f32, intersection : Vec
 
         Vec2{
             x: intersection.x ,
-            y: intersection.y - 0.5 //chuck it over to the next spot
+            //chuck it over to the next spot
+            y: if intersection.y - 0.5> 0.0 {
+                intersection.y - 0.5
+            }else{
+                0.0
+            },
+
         }
     }else{
         Vec2{
@@ -92,7 +98,11 @@ fn check_over_y_step(gs : &GameState, xstep : f32,ystep: f32, intersection : Vec
 fn check_over_x_step(gs : &GameState, xstep : f32,ystep: f32, intersection : Vec2<f32>, changed_frame : bool) -> Option<(Wall, Vec2<f32>)>{
     let grab_cell_pos = if xstep.is_sign_negative(){
         Vec2{
-            x: intersection.x - 0.5,
+            x: if intersection.x - 0.5 > 0.0 {
+                intersection.x - 0.5
+            }else{
+                0.0
+            },
             y: intersection.y  //chuck it over to the next spot
         }
     }else{
