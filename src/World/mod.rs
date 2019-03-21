@@ -7,6 +7,7 @@ use std::f32;
 
 use world::wall::Wall as Wall;
 use world::wall::NULL_COLOR;
+use world::player::Player as Player;
 
 use renderer::vector::Vec2 as Vec2;
 
@@ -14,16 +15,46 @@ pub const WORLD_SIZE_X: usize = 10;
 pub const WORLD_SIZE_Y: usize = 10;
 pub const WORLD_CELL_SIZE: u32 = 10; // 10 Meters?
 
+#[derive(Debug)]
+pub struct GameState{
+    pub the_world : Vec<Vec<Wall>>,
+    pub p : Player,
+}
+
+impl GameState{
+    //TODO TEST THIS
+//could be refactored??
+    pub fn get_world_cell_at_vec2_pos(&self, pos: Vec2<f32>, debug : bool) -> Wall {
+        let x: usize = (pos.x / WORLD_CELL_SIZE as f32).floor() as usize;
+        let y: usize = (pos.y / WORLD_CELL_SIZE as f32).floor() as usize;
+        if debug {
+            println!("GET_WORLD POS {:?} w[x] : {:?} w[y] : {:?}",pos,x,y);
+        }
+        self.the_world[x][y]
+    }
+
+    //move to world???
+    pub fn move_player(&mut self, delta_pos : Vec2<f32>){
+        let new_pos = self.p.pos + delta_pos;
+        if out_of_world_bounds(new_pos) == false {
+            if self.get_world_cell_at_vec2_pos(new_pos, false).full == false{
+                self.p.pos = new_pos;
+            }
+
+        }
+    }
+
+}
 
 pub fn find_next_cell_boundary(line_pos: f32, positive: bool) -> i32 {
     // TODO Make tests for this
-    // |   * |  positive gives 64
+    // |   * |  positive gives WORLD_CELL_SIZE
     // |_*___|  negative gives 0
-    // 0 ..  64
+    // 0 ..  WORLD_CELL_SIZE
     if positive {
         WORLD_CELL_SIZE as i32 * ((line_pos.floor() as i32 / WORLD_CELL_SIZE as i32) + 1)
     } else {
-        WORLD_CELL_SIZE as i32 * ((line_pos.floor() as i32 / WORLD_CELL_SIZE as i32) - 1)
+        WORLD_CELL_SIZE as i32 * (line_pos.floor() as i32 / WORLD_CELL_SIZE as i32)
     }
 }
 
@@ -40,15 +71,8 @@ pub fn out_of_world_bounds(pos: Vec2<f32>) -> bool {
     }
 
 }
-//TODO TEST THIS
-pub fn get_world_cell_at_vec2_pos(pos: Vec2<f32>, w: &Vec<Vec<Wall>>) -> Wall {
-    //println!("GET_WORLD POS {:?}",pos);
-    let x: usize = (pos.x.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
-    let y: usize = (pos.y.floor() as i32 / WORLD_CELL_SIZE as i32) as usize;
-    w[x][y]
-}
 
-fn gen_blank_world(x: usize, y: usize) -> Vec<Vec<Wall>> {
+pub fn gen_blank_world(x: usize, y: usize) -> Vec<Vec<Wall>> {
     let mut ret = Vec::new();
     let reg_wall = Wall {
         full: false,

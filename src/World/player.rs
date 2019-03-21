@@ -1,10 +1,10 @@
 use renderer::vector::Vec2 as Vec2;
 use world::out_of_world_bounds;
-use world::get_world_cell_at_vec2_pos;
 use world::wall::Wall;
+
 pub const MOVE_RATE : f32 = 5.0;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Player {
     ///Their position in the world
     pub pos: Vec2<f32>,
@@ -13,13 +13,5 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn move_player(&mut self,w: &Vec<Vec<Wall>>, delta_pos : Vec2<f32>){
-        let new_pos = self.pos + delta_pos;
-        if out_of_world_bounds(new_pos) == false {
-            if get_world_cell_at_vec2_pos(new_pos, w).full == false{
-                self.pos = new_pos;
-            }
 
-        }
-    }
 }

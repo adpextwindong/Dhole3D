@@ -11,13 +11,14 @@ use SCREEN_SIZE_Y;
 use world::WORLD_SIZE_Y;
 use world::WORLD_SIZE_X;
 use world::WORLD_CELL_SIZE;
+use world::GameState;
 use renderer::vector::Vec2;
 use renderer::vector::{rotate_clockwise, rotate_counter_clockwise};
 
 const RECT_SIZE: u32 = SCREEN_SIZE_Y / WORLD_SIZE_Y as u32;
 
 //TODO maybe need scaling/moving around for bigger maps but we can refactor that later.
-pub fn debug_draw_world(canvas: &mut Canvas<Window>, w : &Vec<Vec<Wall>>, p: &Player) {
+pub fn debug_draw_world(canvas: &mut Canvas<Window>, gs : &GameState) {
     canvas.set_draw_color(Color{
         r: 128,
         g: 128,
@@ -26,7 +27,7 @@ pub fn debug_draw_world(canvas: &mut Canvas<Window>, w : &Vec<Vec<Wall>>, p: &Pl
     });
     canvas.fill_rect(None).unwrap(); //Reset canvas to gray
 
-    draw_cells(canvas, w);
+    draw_cells(canvas, &gs.the_world);
 
     canvas.set_draw_color(Color{
         r: 255,
@@ -35,7 +36,7 @@ pub fn debug_draw_world(canvas: &mut Canvas<Window>, w : &Vec<Vec<Wall>>, p: &Pl
         a: 255,
     });
 
-    draw_player(canvas, p);
+    draw_player(canvas, &gs.p);
 
 }
 
@@ -59,7 +60,7 @@ fn draw_player(canvas: &mut Canvas<Window>, p: &Player){
         )
     ).unwrap();
 
-    let line_scale = 20.0;
+    let line_scale = 1000.0;
 
     let arrow_head_pos = Vec2{
         x: pos_debug.x + p.dir.normalized().scale(line_scale).x,

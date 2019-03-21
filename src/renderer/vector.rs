@@ -2,6 +2,7 @@ use std::ops::{Add, Sub, Div};
 use num_traits::Float as Float;
 use std::ops::AddAssign;
 use sdl2::rect::Point;
+use renderer::ray2D::Ray2D;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Vec2<T> {
@@ -18,7 +19,7 @@ impl<T: Float> Vec2<T>{
     where
         T: Float
     {
-        ((self.x * other.x) + (self.y * other.y)).sqrt()
+        (((self.x - other.x).powi(2)) + ((self.y - other.y).powi(2))).sqrt()
     }
 
     pub fn get_x(self) -> T {
@@ -29,14 +30,10 @@ impl<T: Float> Vec2<T>{
         self.y
     }
 
-    pub fn length(&self) -> T{
+    pub fn length(self) -> T{
         ((self.x * self.x) + (self.y * self.y)).sqrt()
     }
 
-    pub fn norm(self) -> Vec2<T> {
-        let l = self.length();
-        return Vec2::<T> { x: self.x / l, y: self.y / l};
-    }
     pub fn normalize(mut self) {
         let l = self.length();
         self.x = self.x / l;
@@ -65,9 +62,18 @@ impl<T: Float> Vec2<T>{
         }
     }
 }
+
 impl Vec2<f32>{
     pub fn angle(self) -> f32{
         f32::atan2(self.y,self.x)
+    }
+
+    pub fn dist_rayfishfix(self, ray : Ray2D) -> f32{
+        let ang = ray.dir.normalized().angle();
+        Vec2{
+            x: (self.x * f32::cos(ang)) - (self.y * f32::sin(ang)),
+            y: (self.x * f32::sin(ang)) + (self.y * f32::cos(ang))
+        }.length()
     }
 }
 

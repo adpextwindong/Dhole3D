@@ -4,6 +4,8 @@ pub mod vector;
 mod dda;
 
 use std::f32;
+use std::io;
+use std::io::Read;
 
 use sdl2::pixels::Color;
 use sdl2::render::Texture;
@@ -23,6 +25,7 @@ use renderer::vector::rotate_counter_clockwise;
 use renderer::vector::Vec2;
 use renderer::dda::find_wall_and_distance;
 use renderer::ray2D::Ray2D;
+use world::GameState;
 
 pub const FOV: f32 = f32::consts::FRAC_PI_2;
 
@@ -38,29 +41,33 @@ impl<'a> renderer<'a> {
         }
     }
 
-    pub fn draw_frame(&mut self, texture: &mut Texture,theworld: &Vec<Vec<Wall>>, p: &Player){
+    pub fn draw_frame(&mut self, texture: &mut Texture,gs : &GameState, changed_frame_outer :  bool){
 
         {//TODO Draw statics texture
             let statics_renderer = |buffer: &mut [u8], pitch: usize| {
-//                clear_texture(buffer, pitch);
                 draw_ceiling(buffer, pitch);
                 draw_floor(buffer, pitch);
 
-                let world: &Vec<Vec<Wall>> = &theworld;
-                let p_copy: Player = *p;
+                let p_copy: Player = gs.p;
+                let mut changed_frame_inner = changed_frame_outer;
 
-
-                let mut ray_curr_dir = rotate_counter_clockwise(p_copy.dir, FOV / 2.0);
+                //Currently this is disabled for looking at the middle ray
+                //filled accross the whole screen for simpler debugging.
+                //let mut ray_curr_dir = rotate_counter_clockwise(p_copy.dir, FOV / 2.0);
+                let mut ray_curr_dir = p_copy.dir;
 
                 let delta_theta_y = FOV / SCREEN_SIZE_X as f32;
 
                 'raycasting: for mut y in 0..SCREEN_SIZE_X as usize {
-                    let ray: Ray2D = Ray2D::new(ray_curr_dir, p_copy.pos.y);
-                    let possible_wall : Option<(Wall, Vec2<f32>)> = find_wall_and_distance(world, &p_copy, ray);
+                    let ray: Ray2D = Ray2D::new(ray_curr_dir, p_copy.pos);
+                    let possible_wall : Option<(Wall, Vec2<f32>)> = find_wall_and_distance(gs, ray, changed_frame_inner);
+                    //TODO remove
+                    changed_frame_inner = false;
 
                     if let Some((sampled_wall, dist)) = possible_wall {
 
-                        let ang = ray.dir.norm().angle();
+                        //use rayfishfix???
+                        let ang = ray.dir.normalized().angle();
                         let fixed_dist : f32 = Vec2{
                             x: (dist.x * f32::cos(ang)) - (dist.y * f32::sin(ang)),
                             y: (dist.x * f32::sin(ang)) + (dist.y * f32::cos(ang))
@@ -69,14 +76,14 @@ impl<'a> renderer<'a> {
                         draw_col(buffer, pitch, y, sampled_wall.color, fixed_dist);
 
                     }
-                    ray_curr_dir = rotate_clockwise(ray_curr_dir, delta_theta_y);
+                    //ray_curr_dir = rotate_clockwise(ray_curr_dir, delta_theta_y);
                 }
             };
 
             texture.with_lock(None, &statics_renderer).unwrap();
         }
-        self.canvas.copy(texture, None, None).unwrap();
         //Present Frame
+        self.canvas.copy(texture, None, None).unwrap();
         self.canvas.present();
     }
 
@@ -126,7 +133,7 @@ fn draw_col(buffer: &mut [u8], pitch: usize, x: usize, color: Color, dist: f32) 
     let h = SCREEN_SIZE_Y as f32 / dist * WORLD_CELL_SIZE as f32; //This dist will have to be normalized for fix eye
     let col_start = h /2.0;
     let mut clamp_end = SCREEN_SIZE_Y as f32 - (h / 2.0);
-    if(clamp_end < 0.0){
+    if clamp_end < 0.0{
         clamp_end = 0.0;
     }
     let col_end = clamp_end;

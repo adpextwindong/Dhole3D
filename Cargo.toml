@@ -4,6 +4,7 @@ version = "0.0.1"
 authors = ["George Crary <craryg@oregonstate.edu>"]
 build = "build.rs"
 debug = true
+rustflags = ["-C target-cpu=skylake"]
 
 [dependencies]
 sdl2 = "0.31.0"

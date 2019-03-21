@@ -14,23 +14,32 @@ use renderer::FOV;
 use renderer::vector::{rotate_counter_clockwise, rotate_clockwise};
 
 use world::player::MOVE_RATE;
+use world::GameState;
+
 const TURN_RESOLUTION : f32 = 30.0;
 
-pub fn handle_events(mut event_pump :  EventPump,w: &Vec<Vec<Wall>>, p : &mut Player) -> Option<Event> {
+#[derive(Debug)]
+pub enum KeyhandlerEvent {
+    EngineKeyIdle,
+    EngineKeyGSUpdate,
+    EngineKeyKill
+}
 
+pub fn handle_events(mut event_pump :  EventPump,gs : &mut GameState, debug_on : &mut bool) -> Option<KeyhandlerEvent> {
+
+    //filter events for kill commands, then process gs_update keys
     for event in event_pump.poll_iter() {
         match event {
-            Event::Quit { .. } => {},
+            Event::Quit { .. } => return Some(KeyhandlerEvent::EngineKeyKill),
 
-            Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return Some(Event::Quit{
-                timestamp: 0,
-            }),
+            Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return Some(KeyhandlerEvent::EngineKeyKill),
 
-            Event::KeyDown {keycode, ..} => {
-                handle_keydowns(keycode, w, p);
+            Event::KeyDown { keycode, .. } => {
+                handle_keydowns(keycode, gs, debug_on);
+                return Some(KeyhandlerEvent::EngineKeyGSUpdate);
             },
 
-            _ => {}
+            _ => return Some(KeyhandlerEvent::EngineKeyIdle)
         }
     }
     None
@@ -38,23 +47,27 @@ pub fn handle_events(mut event_pump :  EventPump,w: &Vec<Vec<Wall>>, p : &mut Pl
 
 
 
-fn handle_keydowns(keydown : Option<Keycode>, w: &Vec<Vec<Wall>>, p : &mut Player) {
+fn handle_keydowns(keydown : Option<Keycode>,gs : &mut GameState, debug_on : &mut bool) {
     if let Some(keycode) = keydown{
         match keycode{
             Keycode::W => {
-                let pos_delta = p.dir.scale(MOVE_RATE);
-                p.move_player(w, pos_delta);
+                let pos_delta = gs.p.dir.scale(MOVE_RATE);
+                gs.move_player(pos_delta);
             },
             Keycode::S =>{
-                let pos_delta = p.dir.scale( -1.0 * MOVE_RATE);
-                p.move_player(w, pos_delta);
+                let pos_delta = gs.p.dir.scale( -1.0 * MOVE_RATE);
+                gs.move_player( pos_delta);
             },
             Keycode::A =>{
-                p.dir = rotate_counter_clockwise(p.dir, FOV / TURN_RESOLUTION);
+                gs.p.dir = rotate_counter_clockwise(gs.p.dir, FOV / TURN_RESOLUTION);
 
             },
             Keycode::D =>{
-                p.dir = rotate_clockwise(p.dir, FOV / TURN_RESOLUTION);
+
+                gs.p.dir = rotate_clockwise(gs.p.dir, FOV / TURN_RESOLUTION);
+            },
+            Keycode::O =>{
+                *debug_on^= true;
             },
             _ => {
                 //Unused key for now

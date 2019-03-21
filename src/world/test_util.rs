@@ -10,8 +10,9 @@ use super::WORLD_SIZE_Y;
 use world::wall::GREEN;
 use world::wall::BLUE;
 use world::wall::RED;
+use world::GameState;
 
-pub fn generate_test_world() -> ( Vec<Vec<Wall>>, Player){
+pub fn generate_test_world() -> GameState{
 
     let mut theworld = gen_blank_world(WORLD_SIZE_X, WORLD_SIZE_Y);
 
@@ -52,15 +53,18 @@ pub fn generate_test_world() -> ( Vec<Vec<Wall>>, Player){
     }
     //NOW Test up down and left right
 
-//    theworld[5][2] = Wall {
-//        full: true,
-//        color: BLUE,
-//    };
-//    theworld[5][4] = Wall {
-//        full: true,
-//        color: GREEN,
-//    };
+    theworld[5][2] = Wall {
+        full: true,
+        color: BLUE,
+    };
+    theworld[5][4] = Wall {
+        full: true,
+        color: GREEN,
+    };
 
 
-    (theworld, p)
+    GameState{
+        the_world: theworld,
+        p,
+    }
 }
