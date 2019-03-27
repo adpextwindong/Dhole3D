@@ -19,11 +19,16 @@ pub const WORLD_CELL_SIZE: u32 = 10; // 10 Meters?
 pub struct GameState{
     pub the_world : Vec<Vec<Wall>>,
     pub p : Player,
+    pub camera_plane : Vec2<f32>,
+    pub dflags : DebugWindowFlags
+}
+
+#[derive(Debug)]
+pub struct DebugWindowFlags{
+    pub distsView : bool,
 }
 
 impl GameState{
-    //TODO TEST THIS
-//could be refactored??
     pub fn get_world_cell_at_vec2_pos(&self, pos: Vec2<f32>, debug : bool) -> Wall {
         let x: usize = (pos.x / WORLD_CELL_SIZE as f32).floor() as usize;
         let y: usize = (pos.y / WORLD_CELL_SIZE as f32).floor() as usize;
@@ -33,7 +38,6 @@ impl GameState{
         self.the_world[x][y]
     }
 
-    //move to world???
     pub fn move_player(&mut self, delta_pos : Vec2<f32>){
         let new_pos = self.p.pos + delta_pos;
         if out_of_world_bounds(new_pos) == false {

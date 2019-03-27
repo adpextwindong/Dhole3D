@@ -17,8 +17,13 @@ use renderer::vector::{rotate_clockwise, rotate_counter_clockwise};
 
 const RECT_SIZE: u32 = SCREEN_SIZE_Y / WORLD_SIZE_Y as u32;
 
-//TODO maybe need scaling/moving around for bigger maps but we can refactor that later.
-pub fn debug_draw_world(canvas: &mut Canvas<Window>, gs : &GameState) {
+pub fn debug_draw_dists(canvas: &mut Canvas<Window>, dists_and_colors : &Vec<(f32, Color)>) {
+    let max : f32 = dists_and_colors.into_iter().map(|(d,c) | d).fold(0.0f32, |mut max, &val| {
+        if val > max {
+            max = val;
+        }
+        max
+    });
     canvas.set_draw_color(Color{
         r: 128,
         g: 128,
@@ -27,17 +32,43 @@ pub fn debug_draw_world(canvas: &mut Canvas<Window>, gs : &GameState) {
     });
     canvas.fill_rect(None).unwrap(); //Reset canvas to gray
 
-    draw_cells(canvas, &gs.the_world);
+    for (x, (dist,color)) in dists_and_colors.iter().enumerate(){
+        canvas.set_draw_color(*color);
 
-    canvas.set_draw_color(Color{
-        r: 255,
-        g: 165,
-        b: 0,
-        a: 255,
-    });
+        canvas.fill_rect(
+            Rect::new(
+                x as i32,
+                0,
+                1,
+                ((dist/max) * SCREEN_SIZE_Y as f32) as u32
+            )
+        ).unwrap();
 
-    draw_player(canvas, &gs.p);
+    }
+}
 
+//TODO maybe need scaling/moving around for bigger maps but we can refactor that later.
+pub fn debug_draw_world(canvas: &mut Canvas<Window>, gs : &GameState) {
+        if gs.dflags.distsView == false{
+            canvas.set_draw_color(Color{
+                r: 128,
+                g: 128,
+                b: 128,
+                a: 255,
+            });
+            canvas.fill_rect(None).unwrap(); //Reset canvas to gray
+
+            draw_cells(canvas, &gs.the_world);
+
+            canvas.set_draw_color(Color{
+                r: 255,
+                g: 165,
+                b: 0,
+                a: 255,
+            });
+
+            draw_player(canvas, &gs.p);
+        }
 }
 
 fn draw_player(canvas: &mut Canvas<Window>, p: &Player){

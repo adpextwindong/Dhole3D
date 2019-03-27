@@ -11,6 +11,16 @@ use world::wall::GREEN;
 use world::wall::BLUE;
 use world::wall::RED;
 use world::GameState;
+use renderer::vector::rotate_counter_clockwise;
+
+use SCREEN_SIZE_X;
+use world::DebugWindowFlags;
+use renderer::vector::rotate_clockwise;
+
+use std::f32;
+
+
+
 
 pub fn generate_test_world() -> GameState{
 
@@ -47,24 +57,35 @@ pub fn generate_test_world() -> GameState{
     for i in 0..WORLD_SIZE_X as usize {
         theworld[0][i] = red_wall;
         theworld[WORLD_SIZE_Y as usize - 1 as usize][i] = green_wall;
-//
+
         theworld[i][0] = blue_wall;
         theworld[i][WORLD_SIZE_X as usize - 1 as usize] = green_wall;
     }
     //NOW Test up down and left right
 
-    theworld[5][2] = Wall {
+    theworld[0][4] = Wall {
         full: true,
         color: BLUE,
     };
-    theworld[5][4] = Wall {
-        full: true,
-        color: GREEN,
-    };
+
+//    theworld[5][2] = Wall {
+//        full: true,
+//        color: BLUE,
+//    };
+//    theworld[5][4] = Wall {
+//        full: true,
+//        color: GREEN,
+//    };
+
 
 
     GameState{
         the_world: theworld,
         p,
+        camera_plane: rotate_clockwise(p.dir,f32::consts::FRAC_PI_4),
+        dflags : DebugWindowFlags{
+            distsView: false,
+
+        }
     }
 }

@@ -27,6 +27,8 @@ use renderer::dda::find_wall_and_distance;
 use renderer::ray2D::Ray2D;
 use world::GameState;
 
+use debug_window;
+
 pub const FOV: f32 = f32::consts::FRAC_PI_2;
 
 pub struct renderer<'a>{
@@ -41,47 +43,45 @@ impl<'a> renderer<'a> {
         }
     }
 
-    pub fn draw_frame(&mut self, texture: &mut Texture,gs : &GameState, changed_frame_outer :  bool){
+    //returns last frame info
+    pub fn draw_frame(&mut self,mut debug_canvas:&mut Canvas<Window>,texture: &mut Texture,gs : &GameState, changed_frame :  bool){
 
-        {//TODO Draw statics texture
+        {
+            let mut changed_frame_inner = changed_frame;
+            let mut col_dists_and_colors : Vec<(f32, Color)> = Vec::with_capacity(SCREEN_SIZE_X as usize);
+            'raycasting: for x in 0..SCREEN_SIZE_X as usize {
+                let cameraX = ((2.0 * x as f32) / SCREEN_SIZE_X as f32) - 1.0;
+
+                let ray: Ray2D = Ray2D::new(gs.p.dir, gs.camera_plane, cameraX);
+                let possible_wall: Option<(Wall, Vec2<f32>)> = find_wall_and_distance(gs, ray, changed_frame_inner);
+                //TODO remove
+                changed_frame_inner = false;
+
+                if let Some((sampled_wall, dist)) = possible_wall {
+                    //use rayfishfix???
+                    let ang = ray.dir.normalized().angle();
+                    let fixed_dist : f32 = Vec2{
+                        x: (dist.x * f32::cos(ang)) - (dist.y * f32::sin(ang)),
+                        y: (dist.x * f32::sin(ang)) + (dist.y * f32::cos(ang))
+                    }.length();
+
+                    col_dists_and_colors.push((fixed_dist, sampled_wall.color));
+                }
+            }
+
             let statics_renderer = |buffer: &mut [u8], pitch: usize| {
                 draw_ceiling(buffer, pitch);
                 draw_floor(buffer, pitch);
-
-                let p_copy: Player = gs.p;
-                let mut changed_frame_inner = changed_frame_outer;
-
-                //Currently this is disabled for looking at the middle ray
-                //filled accross the whole screen for simpler debugging.
-                //let mut ray_curr_dir = rotate_counter_clockwise(p_copy.dir, FOV / 2.0);
-                let mut ray_curr_dir = p_copy.dir;
-
-                let delta_theta_y = FOV / SCREEN_SIZE_X as f32;
-
-                'raycasting: for mut y in 0..SCREEN_SIZE_X as usize {
-                    let ray: Ray2D = Ray2D::new(ray_curr_dir, p_copy.pos);
-                    let possible_wall : Option<(Wall, Vec2<f32>)> = find_wall_and_distance(gs, ray, changed_frame_inner);
-                    //TODO remove
-                    changed_frame_inner = false;
-
-                    if let Some((sampled_wall, dist)) = possible_wall {
-
-                        //use rayfishfix???
-                        let ang = ray.dir.normalized().angle();
-                        let fixed_dist : f32 = Vec2{
-                            x: (dist.x * f32::cos(ang)) - (dist.y * f32::sin(ang)),
-                            y: (dist.x * f32::sin(ang)) + (dist.y * f32::cos(ang))
-                        }.length();
-
-                        draw_col(buffer, pitch, y, sampled_wall.color, fixed_dist);
-
-                    }
-                    //ray_curr_dir = rotate_clockwise(ray_curr_dir, delta_theta_y);
-                }
+                draw_collumns(buffer, pitch, &col_dists_and_colors);
             };
-
             texture.with_lock(None, &statics_renderer).unwrap();
+
+            if gs.dflags.distsView {
+                debug_window::debug_draw_dists(debug_canvas, &col_dists_and_colors);
+            }
         }
+
+
         //Present Frame
         self.canvas.copy(texture, None, None).unwrap();
         self.canvas.present();
@@ -128,9 +128,15 @@ fn draw_floor(buffer: &mut [u8], pitch: usize) {
     }
 }
 
+
+fn draw_collumns(buffer: &mut [u8], pitch: usize, col_dists_and_colors : &Vec<(f32, Color)>){
+    for (x, (dist, color)) in col_dists_and_colors.iter().enumerate() {
+        draw_col(buffer, pitch, x, *color, *dist);
+    }
+}
 fn draw_col(buffer: &mut [u8], pitch: usize, x: usize, color: Color, dist: f32) {
     //println!("SCALING BY DIST {:?}", dist);
-    let h = SCREEN_SIZE_Y as f32 / dist * WORLD_CELL_SIZE as f32; //This dist will have to be normalized for fix eye
+    let h = (SCREEN_SIZE_Y as f32 / dist)  * 2.2 * WORLD_CELL_SIZE as f32; //This dist will have to be normalized for fix eye
     let col_start = h /2.0;
     let mut clamp_end = SCREEN_SIZE_Y as f32 - (h / 2.0);
     if clamp_end < 0.0{

@@ -28,6 +28,7 @@ pub enum KeyhandlerEvent {
 pub fn handle_events(mut event_pump :  EventPump,gs : &mut GameState, debug_on : &mut bool) -> Option<KeyhandlerEvent> {
 
     //filter events for kill commands, then process gs_update keys
+    //TODO look into how this pump iter really works
     for event in event_pump.poll_iter() {
         match event {
             Event::Quit { .. } => return Some(KeyhandlerEvent::EngineKeyKill),
@@ -60,15 +61,19 @@ fn handle_keydowns(keydown : Option<Keycode>,gs : &mut GameState, debug_on : &mu
             },
             Keycode::A =>{
                 gs.p.dir = rotate_counter_clockwise(gs.p.dir, FOV / TURN_RESOLUTION);
-
+                gs.camera_plane = rotate_counter_clockwise(gs.camera_plane, FOV / TURN_RESOLUTION);
             },
             Keycode::D =>{
 
                 gs.p.dir = rotate_clockwise(gs.p.dir, FOV / TURN_RESOLUTION);
+                gs.camera_plane = rotate_clockwise(gs.camera_plane, FOV / TURN_RESOLUTION);
             },
             Keycode::O =>{
                 *debug_on^= true;
             },
+            Keycode::L =>{
+                gs.dflags.distsView ^= true;
+            }
             _ => {
                 //Unused key for now
             }

@@ -68,13 +68,16 @@ pub fn main() {
 
     'running: loop {
         let mut event_pump = sdl_context.event_pump().unwrap();
-        gs.p.dir.normalize();
-        debug_window::debug_draw_world(&mut debug_canvas, &gs);
+        //gs.p.dir.normalize();
+        if gs.dflags.distsView == false {
+            debug_window::debug_draw_world(&mut debug_canvas, &gs);
+        }
+
         //========
         //RENDERER
         {
             let mut game_renderer = renderer::renderer::new(&mut canvas);
-            game_renderer.draw_frame(&mut texture, &gs, key_update && debug_on);
+            let last_frame_info = game_renderer.draw_frame(&mut debug_canvas, &mut texture,  &gs, key_update && debug_on);
         }
         //RENDERER
         //========

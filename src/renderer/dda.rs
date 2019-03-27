@@ -187,8 +187,12 @@ pub fn find_wall_and_distance(gs : &GameState, ray : Ray2D, changed_frame : bool
         let x_dir_oob: bool = out_of_world_bounds(x_axis_intersection);
         let y_dir_oob: bool = out_of_world_bounds(y_axis_intersection);
 
-        let dist_x_inter = x_axis_intersection.diff(&gs.p.pos).length(); //.dist_rayfishfix(ray);
-        let dist_y_inter = y_axis_intersection.diff(&gs.p.pos).length(); //.dist_rayfishfix(ray);
+
+        let dist_x_inter = x_axis_intersection.diff(&gs.p.pos).dist_rayfishfix(ray);
+        let dist_y_inter = y_axis_intersection.diff(&gs.p.pos).dist_rayfishfix(ray);
+
+//        let dist_x_inter = x_axis_intersection.diff(&gs.p.pos).length(); //.dist_rayfishfix(ray);
+//        let dist_y_inter = y_axis_intersection.diff(&gs.p.pos).length(); //.dist_rayfishfix(ray);
 
         let walk_res;
 
@@ -207,8 +211,6 @@ pub fn find_wall_and_distance(gs : &GameState, ray : Ray2D, changed_frame : bool
             }
             walk_res = x_walk(gs, xstep, &mut x_axis_intersection, ystep, changed_frame, &mut buf_handle);
         }else{
-            // Fix this sumbitch
-
             if changed_frame {
                 write!(buf_handle, "X inter {:?}, Y inter {:?}, X dist {:?}, Y dist {:?}\t\t==>", x_axis_intersection, y_axis_intersection, dist_x_inter, dist_y_inter);
             }
