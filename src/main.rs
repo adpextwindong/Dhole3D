@@ -7,11 +7,17 @@ extern crate shader_version;
 extern crate window;
 extern crate num_traits;
 extern crate graphics;
+extern crate serde;
+extern crate serde_json;
 
 use std::time::{Duration};
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::event::Event;
 
+use serde::{Deserialize, Serialize};
+use serde_json::Result;
+use std::fs::{File, OpenOptions};
+use std::io::{BufReader, Write};
 
 mod world;
 mod renderer;
@@ -29,6 +35,7 @@ use renderer::vector::rotate_counter_clockwise;
 use keyhandler::handle_events;
 
 use keyhandler::KeyhandlerEvent::*;
+use world::player::Player;
 
 //TODO make this a startup option or something
 const SCREEN_SIZE_X: u32 = 800;
@@ -61,10 +68,25 @@ pub fn main() {
 
     let mut debug_canvas = debug_window.into_canvas().build().unwrap();
 //    debug_window::debug_print_world(&theworld, &p);
-    debug_window::debug_print_player(gs.p);
+//    debug_window::debug_print_player(gs.p);
 
     let mut key_update = true;
     let mut debug_on : bool = false;
+
+    //FIXME add saving player state to file to make debugging easier
+    {
+        let player = match OpenOptions::new().read(true).open("save.json"){
+            Err(e) => {
+                gs.p
+            },
+            Ok(file) => {
+                let save_reader = BufReader::new(file);
+                serde_json::from_reader(save_reader).unwrap_or(gs.p)
+            }
+        };
+        gs.p = player;
+    }
+
 
     'running: loop {
         let mut event_pump = sdl_context.event_pump().unwrap();
@@ -86,7 +108,13 @@ pub fn main() {
             match event {
                 keyhandler::KeyhandlerEvent::EngineKeyKill => {
                     print!("Recieved event: {:?}. Shutting down.", event);
+                    {
+                        let mut save_file = OpenOptions::new().create(true).write(true).truncate(true).open("save.json").unwrap();
+                        save_file.write(serde_json::to_string(&gs.p).unwrap().as_bytes());
+                    }
+
                     break 'running;
+
                 },
                 EngineKeyGSUpdate => {
                     key_update = true;

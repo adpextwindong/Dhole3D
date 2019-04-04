@@ -4,7 +4,9 @@ use std::ops::AddAssign;
 use sdl2::rect::Point;
 use renderer::ray2D::Ray2D;
 
-#[derive(Copy, Clone, Debug)]
+use serde::{Serialize, Deserialize};
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Vec2<T> {
     pub x: T,
     pub y: T,
