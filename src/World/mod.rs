@@ -21,8 +21,6 @@ pub struct GameState{
     pub the_world : Vec<Vec<Wall>>,
     pub p : Player,
     pub camera_plane : Vec2<f32>,
-    pub dflags : DebugWindowFlags,
-
 }
 
 #[derive(Debug)]

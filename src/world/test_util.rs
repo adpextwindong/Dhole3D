@@ -83,10 +83,5 @@ pub fn generate_test_world() -> GameState{
         the_world: theworld,
         p,
         camera_plane: rotate_clockwise(p.dir,f32::consts::FRAC_PI_4),
-        dflags : DebugWindowFlags{
-            distsView: false,
-            inspect_ray: None,
-            inspect_ray_info: None
-        }
     }
 }

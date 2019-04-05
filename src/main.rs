@@ -29,6 +29,7 @@ use world::WORLD_SIZE_X;
 use world::WORLD_CELL_SIZE;
 use world::player::MOVE_RATE;
 use world::GameState;
+use world::DebugWindowFlags;
 use renderer::FOV;
 use renderer::vector::rotate_clockwise;
 use renderer::vector::rotate_counter_clockwise;
@@ -65,6 +66,11 @@ pub fn main() {
         .unwrap();
 
     let mut gs : GameState = generate_test_world();
+    let mut dflags = DebugWindowFlags{
+        distsView: false,
+        inspect_ray: None,
+        inspect_ray_info: None
+    };
 
     let mut debug_canvas = debug_window.into_canvas().build().unwrap();
 //    debug_window::debug_print_world(&theworld, &p);
@@ -97,22 +103,30 @@ pub fn main() {
         {
             let mut game_renderer = renderer::renderer::new(&mut canvas);
             //fixme mutability of GS
-            let last_frame_info = game_renderer.draw_frame(&mut debug_canvas, &mut texture,  &mut gs, key_update && debug_on);
+            game_renderer.cast_rays(&gs, debug_on, &mut dflags);
+
+
+            if dflags.distsView {
+                debug_window::debug_draw_dists(&mut debug_canvas, &game_renderer.ray_results);
+            }
+
+
+            game_renderer.draw_frame(&mut texture);
         }
         //RENDERER
         //========
 
-        if gs.dflags.distsView == false {
-            debug_window::debug_draw_world(&mut debug_canvas, &gs);
+        if dflags.distsView == false {
+            debug_window::debug_draw_world(&mut debug_canvas, &gs, &dflags);
         }
 
-        if gs.dflags.inspect_ray.is_some(){
-            gs.dflags.inspect_ray = None;
+        if dflags.inspect_ray.is_some(){
+            dflags.inspect_ray = None;
             //gs.dflags.inspect_ray_info = None;
             debug_on = false;
         }
 
-        if let Some(event) = handle_events(event_pump, &mut gs, &mut debug_on) {
+        if let Some(event) = handle_events(event_pump, &mut gs, &mut debug_on, &mut dflags) {
             match event {
                 keyhandler::KeyhandlerEvent::EngineKeyKill => {
                     print!("\nReceived event: {:?}. Saving player state to disk. Shutting down.", event);
@@ -126,7 +140,7 @@ pub fn main() {
 
                 },
                 EngineKeyGSUpdate => {
-                    gs.dflags.inspect_ray_info = None;
+                    dflags.inspect_ray_info = None;
                     key_update = true;
                     //debug_window::debug_print_player(p);
                 },

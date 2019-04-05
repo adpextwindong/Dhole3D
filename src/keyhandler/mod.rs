@@ -18,6 +18,7 @@ use std::io::BufRead;
 
 use world::player::MOVE_RATE;
 use world::GameState;
+use world::DebugWindowFlags;
 
 const TURN_RESOLUTION : f32 = 30.0;
 
@@ -28,7 +29,7 @@ pub enum KeyhandlerEvent {
     EngineKeyKill
 }
 
-pub fn handle_events(mut event_pump :  EventPump,gs : &mut GameState, debug_on : &mut bool) -> Option<KeyhandlerEvent> {
+pub fn handle_events(mut event_pump :  EventPump,gs : &mut GameState, debug_on : &mut bool, dflags : &mut DebugWindowFlags) -> Option<KeyhandlerEvent> {
 
     //filter events for kill commands, then process gs_update keys
     //TODO look into how this pump iter really works
@@ -39,7 +40,7 @@ pub fn handle_events(mut event_pump :  EventPump,gs : &mut GameState, debug_on :
             Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return Some(KeyhandlerEvent::EngineKeyKill),
 
             Event::KeyDown { keycode, .. } => {
-                handle_keydowns(keycode, gs, debug_on);
+                handle_keydowns(keycode, gs, debug_on, dflags);
                 return Some(KeyhandlerEvent::EngineKeyGSUpdate);
             },
 
@@ -51,7 +52,7 @@ pub fn handle_events(mut event_pump :  EventPump,gs : &mut GameState, debug_on :
 
 
 
-fn handle_keydowns(keydown : Option<Keycode>,gs : &mut GameState, debug_on : &mut bool) {
+fn handle_keydowns(keydown : Option<Keycode>,gs : &mut GameState, debug_on : &mut bool, dflags : &mut DebugWindowFlags) {
     if let Some(keycode) = keydown{
         match keycode{
             Keycode::W => {
@@ -75,7 +76,7 @@ fn handle_keydowns(keydown : Option<Keycode>,gs : &mut GameState, debug_on : &mu
                 *debug_on^= true;
             },
             Keycode::L =>{
-                gs.dflags.distsView ^= true;
+                dflags.distsView ^= true;
             }
             Keycode::I =>{
                 println!("Enter ray to inspect: ");
@@ -89,10 +90,10 @@ fn handle_keydowns(keydown : Option<Keycode>,gs : &mut GameState, debug_on : &mu
                             match usize::from_str_radix(&buffer.trim(), 10){
                                 Ok(inspect_ray_i) => {
                                     println!("Inspecting {:?}", inspect_ray_i);
-                                    gs.dflags.inspect_ray = Some(inspect_ray_i);
+                                    dflags.inspect_ray = Some(inspect_ray_i);
                                 },
                                 e =>{
-                                    gs.dflags.inspect_ray = None;
+                                    dflags.inspect_ray = None;
                                 }
                             }
                         },

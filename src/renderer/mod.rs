@@ -26,6 +26,7 @@ use renderer::vector::Vec2;
 use renderer::dda::find_wall_and_distance;
 use renderer::ray2D::Ray2D;
 use world::GameState;
+use world::DebugWindowFlags;
 
 use debug_window;
 
@@ -33,6 +34,7 @@ pub const FOV: f32 = f32::consts::FRAC_PI_2;
 
 pub struct renderer<'a>{
     canvas: &'a mut Canvas<Window>,
+    pub ray_results: Vec<(f32, Color)>
 }
 
 
@@ -40,61 +42,47 @@ impl<'a> renderer<'a> {
     pub fn new(canvas: &'a mut Canvas<Window>) -> renderer<'a> {
         renderer {
             canvas,
+            ray_results: Vec::with_capacity(SCREEN_SIZE_X as usize),
+        }
+    }
+
+    pub fn cast_rays(&mut self, gs : &GameState, changed_frame: bool, dflags: &mut DebugWindowFlags){
+        let mut changed_frame_inner = changed_frame;
+        'raycasting: for x in 0..SCREEN_SIZE_X as usize {
+            let cameraX = ((2.0 * x as f32) / SCREEN_SIZE_X as f32) - 1.0;
+            let ray: Ray2D = Ray2D::new(gs.p.dir, gs.camera_plane, cameraX, x);
+            if let Some(insp_i) = dflags.inspect_ray{
+                changed_frame_inner = x == insp_i;
+                dflags.inspect_ray_info = Some(ray);
+            }
+
+            let possible_wall: Option<(Wall, Vec2<f32>)> = find_wall_and_distance(gs, ray, changed_frame_inner, dflags);
+            //TODO remove
+//                changed_frame_inner = false;
+
+            if let Some((sampled_wall, dist)) = possible_wall {
+                //Ray Fish Eye Fix
+                let ang = ray.dir.normalized().angle();
+                let fixed_dist : f32 = Vec2{
+                    x: (dist.x * f32::cos(ang)) - (dist.y * f32::sin(ang)),
+                    y: (dist.x * f32::sin(ang)) + (dist.y * f32::cos(ang))
+                }.length();
+
+                self.ray_results.push((fixed_dist, sampled_wall.color));
+            }
         }
     }
 
     //returns last frame info
-    pub fn draw_frame(&mut self,mut debug_canvas:&mut Canvas<Window>,texture: &mut Texture,gs : &mut GameState, changed_frame :  bool){
-
+    pub fn draw_frame(&mut self,texture: &mut Texture){
         {
-            let mut changed_frame_inner = changed_frame;
-            let mut col_dists_and_colors : Vec<(f32, Color)> = Vec::with_capacity(SCREEN_SIZE_X as usize);
-            'raycasting: for x in 0..SCREEN_SIZE_X as usize {
-                if changed_frame_inner {
-                    println!("Ray {:?}", x);
-                }
-
-                if let Some(insp_i) = gs.dflags.inspect_ray{
-                    changed_frame_inner = x == insp_i;
-                }
-
-
-                let cameraX = ((2.0 * x as f32) / SCREEN_SIZE_X as f32) - 1.0;
-                let ray: Ray2D = Ray2D::new(gs.p.dir, gs.camera_plane, cameraX, x);
-                if let Some(insp_i) = gs.dflags.inspect_ray{
-                    if x == insp_i{
-                        gs.dflags.inspect_ray_info = Some(ray);
-                    }
-                }
-
-                let possible_wall: Option<(Wall, Vec2<f32>)> = find_wall_and_distance(gs, ray, changed_frame_inner);
-                //TODO remove
-//                changed_frame_inner = false;
-
-                if let Some((sampled_wall, dist)) = possible_wall {
-                    //Ray Fish Eye Fix
-                    let ang = ray.dir.normalized().angle();
-                    let fixed_dist : f32 = Vec2{
-                        x: (dist.x * f32::cos(ang)) - (dist.y * f32::sin(ang)),
-                        y: (dist.x * f32::sin(ang)) + (dist.y * f32::cos(ang))
-                    }.length();
-
-                    col_dists_and_colors.push((fixed_dist, sampled_wall.color));
-                }
-            }
-
             let statics_renderer = |buffer: &mut [u8], pitch: usize| {
                 draw_ceiling(buffer, pitch);
                 draw_floor(buffer, pitch);
-                draw_collumns(buffer, pitch, &col_dists_and_colors);
+                draw_collumns(buffer, pitch, &self.ray_results);
             };
             texture.with_lock(None, &statics_renderer).unwrap();
-
-            if gs.dflags.distsView {
-                debug_window::debug_draw_dists(debug_canvas, &col_dists_and_colors);
-            }
         }
-
 
         //Present Frame
         self.canvas.copy(texture, None, None).unwrap();

@@ -14,6 +14,7 @@ use world::WORLD_CELL_SIZE;
 use world::GameState;
 use renderer::vector::Vec2;
 use renderer::vector::{rotate_clockwise, rotate_counter_clockwise};
+use world::DebugWindowFlags;
 
 const RECT_SIZE: u32 = SCREEN_SIZE_Y / WORLD_SIZE_Y as u32;
 
@@ -48,8 +49,8 @@ pub fn debug_draw_dists(canvas: &mut Canvas<Window>, dists_and_colors : &Vec<(f3
 }
 
 //TODO maybe need scaling/moving around for bigger maps but we can refactor that later.
-pub fn debug_draw_world(canvas: &mut Canvas<Window>, gs : &GameState) {
-        if gs.dflags.distsView == false{
+pub fn debug_draw_world(canvas: &mut Canvas<Window>, gs : &GameState, dflags : &DebugWindowFlags) {
+        if dflags.distsView == false{
             canvas.set_draw_color(Color{
                 r: 128,
                 g: 128,
@@ -67,11 +68,11 @@ pub fn debug_draw_world(canvas: &mut Canvas<Window>, gs : &GameState) {
                 a: 255,
             });
 
-            draw_player(canvas, &gs);
+            draw_player(canvas, &gs, dflags);
         }
 }
 
-fn draw_player(canvas: &mut Canvas<Window>, gs: &GameState){
+fn draw_player(canvas: &mut Canvas<Window>, gs: &GameState, dflags : &DebugWindowFlags){
 
     let pos_debug = wc2screen_coords(gs.p.pos);
 
@@ -110,7 +111,7 @@ fn draw_player(canvas: &mut Canvas<Window>, gs: &GameState){
         Point::new(arrow_head_pos.x as i32, arrow_head_pos.y as i32),
     ).unwrap();
 
-    if let Some(ray) = gs.dflags.inspect_ray_info{
+    if let Some(ray) = dflags.inspect_ray_info{
 
 
         let ray_arrow_head_pos = Vec2{
