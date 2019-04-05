@@ -9,6 +9,7 @@ use world::wall::Wall as Wall;
 use world::wall::NULL_COLOR;
 use world::player::Player as Player;
 
+use renderer::ray2D::Ray2D;
 use renderer::vector::Vec2 as Vec2;
 
 pub const WORLD_SIZE_X: usize = 10;
@@ -20,21 +21,24 @@ pub struct GameState{
     pub the_world : Vec<Vec<Wall>>,
     pub p : Player,
     pub camera_plane : Vec2<f32>,
-    pub dflags : DebugWindowFlags
+    pub dflags : DebugWindowFlags,
+
 }
 
 #[derive(Debug)]
 pub struct DebugWindowFlags{
     pub distsView : bool,
+    pub inspect_ray : Option<usize>,
+    pub inspect_ray_info : Option<Ray2D>
 }
 
 impl GameState{
     pub fn get_world_cell_at_vec2_pos(&self, pos: Vec2<f32>, debug : bool) -> Wall {
         let x: usize = (pos.x / WORLD_CELL_SIZE as f32).floor() as usize;
         let y: usize = (pos.y / WORLD_CELL_SIZE as f32).floor() as usize;
-        if debug {
-            println!("GET_WORLD POS {:?} w[x] : {:?} w[y] : {:?}",pos,x,y);
-        }
+//        if debug {
+//            println!("GET_WORLD POS {:?} w[x] : {:?} w[y] : {:?}",pos,x,y);
+//        }
         self.the_world[x][y]
     }
 

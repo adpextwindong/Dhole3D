@@ -67,13 +67,13 @@ pub fn debug_draw_world(canvas: &mut Canvas<Window>, gs : &GameState) {
                 a: 255,
             });
 
-            draw_player(canvas, &gs.p);
+            draw_player(canvas, &gs);
         }
 }
 
-fn draw_player(canvas: &mut Canvas<Window>, p: &Player){
+fn draw_player(canvas: &mut Canvas<Window>, gs: &GameState){
 
-    let pos_debug = wc2screen_coords(p.pos);
+    let pos_debug = wc2screen_coords(gs.p.pos);
 
     canvas.set_draw_color(Color{
         r: 255,
@@ -94,8 +94,8 @@ fn draw_player(canvas: &mut Canvas<Window>, p: &Player){
     let line_scale = 1000.0;
 
     let arrow_head_pos = Vec2{
-        x: pos_debug.x + p.dir.normalized().scale(line_scale).x,
-        y: pos_debug.y - p.dir.normalized().scale(line_scale).y
+        x: pos_debug.x + gs.p.dir.normalized().scale(line_scale).x,
+        y: pos_debug.y - gs.p.dir.normalized().scale(line_scale).y
     };
 
     canvas.set_draw_color(Color{
@@ -109,6 +109,27 @@ fn draw_player(canvas: &mut Canvas<Window>, p: &Player){
         Point::new(pos_debug.x as i32, pos_debug.y as i32),
         Point::new(arrow_head_pos.x as i32, arrow_head_pos.y as i32),
     ).unwrap();
+
+    if let Some(ray) = gs.dflags.inspect_ray_info{
+
+
+        let ray_arrow_head_pos = Vec2{
+            x: pos_debug.x + ray.dir.normalized().scale(line_scale).x,
+            y: pos_debug.y - ray.dir.normalized().scale(line_scale).y
+        };
+
+        canvas.set_draw_color(Color{
+            r: 255,
+            g: 0,
+            b: 255,
+            a: 255,
+        });
+
+        canvas.draw_line(
+            Point::new(pos_debug.x as i32, pos_debug.y as i32),
+            Point::new(ray_arrow_head_pos.x as i32, ray_arrow_head_pos.y as i32),
+        ).unwrap();
+    }
 }
 fn draw_cells(canvas: &mut Canvas<Window>, w : &Vec<Vec<Wall>>) {
     for x in 0..WORLD_SIZE_X as i32{

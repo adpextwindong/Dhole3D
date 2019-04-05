@@ -13,6 +13,9 @@ use world::wall::Wall;
 use renderer::FOV;
 use renderer::vector::{rotate_counter_clockwise, rotate_clockwise};
 
+use std::io;
+use std::io::BufRead;
+
 use world::player::MOVE_RATE;
 use world::GameState;
 
@@ -73,6 +76,31 @@ fn handle_keydowns(keydown : Option<Keycode>,gs : &mut GameState, debug_on : &mu
             },
             Keycode::L =>{
                 gs.dflags.distsView ^= true;
+            }
+            Keycode::I =>{
+                println!("Enter ray to inspect: ");
+                {
+                    let mut buffer = String::new();
+                    let stdin = io::stdin();
+                    let mut handle = stdin.lock();
+
+                    match handle.read_line(&mut buffer){
+                        Ok(_) => {
+                            match usize::from_str_radix(&buffer.trim(), 10){
+                                Ok(inspect_ray_i) => {
+                                    println!("Inspecting {:?}", inspect_ray_i);
+                                    gs.dflags.inspect_ray = Some(inspect_ray_i);
+                                },
+                                e =>{
+                                    gs.dflags.inspect_ray = None;
+                                }
+                            }
+                        },
+                        e =>{
+                        }
+                    }
+                }
+                println!("Ok uhh");
             }
             _ => {
                 //Unused key for now

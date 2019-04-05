@@ -64,7 +64,16 @@ fn advance_y_intersection(y_axis_intersection : &Vec2<f32>, x_step : f32, y_step
 fn gen_dda_steps(ray : Ray2D) -> (f32,f32) {
     // X + 1 , A + ystep
 
-    let scaled_dir_steps = ray.dir.normalized().scale(WORLD_CELL_SIZE as f32);
+    let mut scaled_dir_steps = ray.dir.normalized().scale(WORLD_CELL_SIZE as f32);
+
+    if scaled_dir_steps.x.is_infinite(){
+        scaled_dir_steps.x = WORLD_CELL_SIZE as f32;
+    }
+
+    if scaled_dir_steps.y.is_infinite(){
+        scaled_dir_steps.y = WORLD_CELL_SIZE as f32;
+    }
+
     (scaled_dir_steps.x, scaled_dir_steps.y)
 }
 
@@ -120,12 +129,12 @@ fn check_over_x_step(gs : &GameState, xstep : f32,ystep: f32, intersection : Vec
 }
 
 #[allow(unused_variables)]
-fn x_walk(gs : &GameState, xstep : f32, x_axis_intersection: &mut Vec2<f32>, ystep: f32, changed_frame : bool, buf_handle : &mut BufWriter<StdoutLock>) -> Option<(Wall,Vec2<f32>)>{
+fn x_walk(gs : &GameState, xstep : f32, x_axis_intersection: &mut Vec2<f32>, ystep: f32, changed_frame : bool, buf_handle : &mut BufWriter<StdoutLock>, ray_number : usize) -> Option<(Wall,Vec2<f32>)>{
     let potential_wall: Wall = gs.get_world_cell_at_vec2_pos(x_axis_intersection.to_owned(), changed_frame);
     if potential_wall.full {
 
         if changed_frame{
-            writeln!(buf_handle, "X WALL FOUND at {:?}, {:?}", x_axis_intersection.x, x_axis_intersection.y);
+            writeln!(buf_handle, "Ray {:?}\t{:?} X WALL FOUND at {:?}, {:?}", ray_number, potential_wall.color, x_axis_intersection.x, x_axis_intersection.y);
         }
         //dirty
         return Some((potential_wall, *x_axis_intersection))
@@ -135,12 +144,12 @@ fn x_walk(gs : &GameState, xstep : f32, x_axis_intersection: &mut Vec2<f32>, yst
     }
 }
 #[allow(unused_variables)]
-fn y_walk(gs : &GameState, ystep : f32, y_axis_intersection: &mut Vec2<f32>, xstep: f32, changed_frame : bool, buf_handle : &mut BufWriter<StdoutLock>) -> Option<(Wall,Vec2<f32>)>{
+fn y_walk(gs : &GameState, ystep : f32, y_axis_intersection: &mut Vec2<f32>, xstep: f32, changed_frame : bool, buf_handle : &mut BufWriter<StdoutLock>, ray_number : usize) -> Option<(Wall,Vec2<f32>)>{
     let potential_wall : Wall = gs.get_world_cell_at_vec2_pos(y_axis_intersection.to_owned(),  changed_frame);
     if potential_wall.full {
 
         if changed_frame{
-            writeln!(buf_handle,"Y WALL FOUND at {:?}, {:?}", y_axis_intersection.x, y_axis_intersection.y);
+            writeln!(buf_handle,"Ray{:?}\t{:?} Y WALL FOUND at {:?}, {:?}", ray_number, potential_wall.color, y_axis_intersection.x, y_axis_intersection.y);
         }
         //dirty
         return Some((potential_wall, *y_axis_intersection));
@@ -153,28 +162,20 @@ fn y_walk(gs : &GameState, ystep : f32, y_axis_intersection: &mut Vec2<f32>, xst
 
 //TODO CURRENT, HEIGHT SCALING
 ///DDA Algorithm using initial x and y axis intersections
-pub fn find_wall_and_distance(gs : &GameState, ray : Ray2D, changed_frame : bool) -> Option<(Wall, Vec2<f32>)> {
+pub fn find_wall_and_distance(gs : &GameState, ray : Ray2D, mut changed_frame : bool) -> Option<(Wall, Vec2<f32>)> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
     let mut buf_handle = io::BufWriter::new(handle);
 
     let (mut xstep,mut ystep) = gen_dda_steps(ray);
 
-    if xstep.is_infinite(){
-        xstep = WORLD_CELL_SIZE as f32;
-    }
-
-    if ystep.is_infinite(){
-        ystep = WORLD_CELL_SIZE as f32;
-    }
-
-    if changed_frame{
+    if changed_frame && gs.dflags.inspect_ray.is_some(){
         writeln!(buf_handle,"xstep: {:?}, ystep: {:?}", xstep, ystep);
     }
 
     let (mut x_axis_intersection,mut y_axis_intersection) = find_axis_intersections(gs.p.pos, ray, xstep, ystep);
 
-    if changed_frame {
+    if changed_frame && gs.dflags.inspect_ray.is_some(){
         writeln!(buf_handle,"\n*********\nRAY: {:?}",ray);
         writeln!(buf_handle,"STEPS X: {:?}, Y: {:?}", xstep, ystep);
         writeln!(buf_handle,"\nSTART STEPS {:?} {:?}", xstep, ystep); //TODO FIX STEP == INF CASE
@@ -182,36 +183,33 @@ pub fn find_wall_and_distance(gs : &GameState, ray : Ray2D, changed_frame : bool
         writeln!(buf_handle,"Initial intersections: X:{:#?} \n Y:{:#?}\n", x_axis_intersection, y_axis_intersection);
     }
 
-
     'finding_wall: loop {
         let x_dir_oob: bool = out_of_world_bounds(x_axis_intersection);
         let y_dir_oob: bool = out_of_world_bounds(y_axis_intersection);
 
-
         let dist_x_inter = x_axis_intersection.diff(&gs.p.pos).dist_rayfishfix(ray);
         let dist_y_inter = y_axis_intersection.diff(&gs.p.pos).dist_rayfishfix(ray);
-
-//        let dist_x_inter = x_axis_intersection.diff(&gs.p.pos).length(); //.dist_rayfishfix(ray);
-//        let dist_y_inter = y_axis_intersection.diff(&gs.p.pos).length(); //.dist_rayfishfix(ray);
 
         let walk_res;
 
         if x_dir_oob && y_dir_oob { //The ray has hit out of bounds
-            //println!("Done, returning None");
+            if changed_frame {
+                writeln!(buf_handle,"Ray {:?} found none", ray.ray_number);
+            }
             return None;
         }else if x_dir_oob || xstep == 0.0 {
-            if changed_frame{
+            if changed_frame && gs.dflags.inspect_ray.is_some(){
                 writeln!(buf_handle,"FIRST PATH WALK");
             }
-
-            walk_res = y_walk(gs, ystep, &mut y_axis_intersection, xstep, changed_frame, &mut buf_handle);
+            walk_res = y_walk(gs, ystep, &mut y_axis_intersection, xstep, changed_frame, &mut buf_handle, ray.ray_number);
         }else if y_dir_oob || ystep == 0.0 {
-            if changed_frame{
+            if changed_frame && gs.dflags.inspect_ray.is_some(){
                 writeln!(buf_handle,"SECOND PATH WALK");
             }
-            walk_res = x_walk(gs, xstep, &mut x_axis_intersection, ystep, changed_frame, &mut buf_handle);
+            walk_res = x_walk(gs, xstep, &mut x_axis_intersection, ystep, changed_frame, &mut buf_handle, ray.ray_number);
         }else{
-            if changed_frame {
+
+            if changed_frame && gs.dflags.inspect_ray.is_some(){
                 write!(buf_handle, "X inter {:?}, Y inter {:?}, X dist {:?}, Y dist {:?}\t\t==>", x_axis_intersection, y_axis_intersection, dist_x_inter, dist_y_inter);
             }
 
@@ -222,8 +220,8 @@ pub fn find_wall_and_distance(gs : &GameState, ray : Ray2D, changed_frame : bool
                     }
                     return Some((wall,dist));
                 }
-                walk_res = x_walk(gs, xstep, &mut x_axis_intersection, ystep, changed_frame,&mut buf_handle);
-                if changed_frame{
+                walk_res = x_walk(gs, xstep, &mut x_axis_intersection, ystep, changed_frame,&mut buf_handle, ray.ray_number);
+                if changed_frame && gs.dflags.inspect_ray.is_some(){
                     writeln!(buf_handle,"THIRD PATH WALK X_WALK new x inter x: {:?} y: {:?}", x_axis_intersection.x, x_axis_intersection.y);
 
                 }
@@ -235,11 +233,10 @@ pub fn find_wall_and_distance(gs : &GameState, ray : Ray2D, changed_frame : bool
                     return Some((wall,dist));
                 }
 
-                walk_res = y_walk(gs, ystep, &mut y_axis_intersection, xstep, changed_frame, &mut buf_handle);
-                if changed_frame{
+                walk_res = y_walk(gs, ystep, &mut y_axis_intersection, xstep, changed_frame, &mut buf_handle, ray.ray_number);
+                if changed_frame && gs.dflags.inspect_ray.is_some(){
                     writeln!(buf_handle,"THIRD PATH WALK Y_WALK new y inter x: {:?} y: {:?}", y_axis_intersection.x, y_axis_intersection.y,);
                 }
-
             }
         }
 
@@ -249,7 +246,5 @@ pub fn find_wall_and_distance(gs : &GameState, ray : Ray2D, changed_frame : bool
             }
             return Some((wall,dist));
         }
-
-
     }
 }

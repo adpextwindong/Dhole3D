@@ -90,26 +90,35 @@ pub fn main() {
 
     'running: loop {
         let mut event_pump = sdl_context.event_pump().unwrap();
-        //gs.p.dir.normalize();
-        if gs.dflags.distsView == false {
-            debug_window::debug_draw_world(&mut debug_canvas, &gs);
-        }
+
 
         //========
         //RENDERER
         {
             let mut game_renderer = renderer::renderer::new(&mut canvas);
-            let last_frame_info = game_renderer.draw_frame(&mut debug_canvas, &mut texture,  &gs, key_update && debug_on);
+            //fixme mutability of GS
+            let last_frame_info = game_renderer.draw_frame(&mut debug_canvas, &mut texture,  &mut gs, key_update && debug_on);
         }
         //RENDERER
         //========
 
+        if gs.dflags.distsView == false {
+            debug_window::debug_draw_world(&mut debug_canvas, &gs);
+        }
+
+        if gs.dflags.inspect_ray.is_some(){
+            gs.dflags.inspect_ray = None;
+            //gs.dflags.inspect_ray_info = None;
+            debug_on = false;
+        }
+
         if let Some(event) = handle_events(event_pump, &mut gs, &mut debug_on) {
             match event {
                 keyhandler::KeyhandlerEvent::EngineKeyKill => {
-                    print!("Recieved event: {:?}. Shutting down.", event);
+                    print!("\nReceived event: {:?}. Saving player state to disk. Shutting down.", event);
                     {
                         let mut save_file = OpenOptions::new().create(true).write(true).truncate(true).open("save.json").unwrap();
+                        //Fixme unwrap
                         save_file.write(serde_json::to_string(&gs.p).unwrap().as_bytes());
                     }
 
@@ -117,6 +126,7 @@ pub fn main() {
 
                 },
                 EngineKeyGSUpdate => {
+                    gs.dflags.inspect_ray_info = None;
                     key_update = true;
                     //debug_window::debug_print_player(p);
                 },

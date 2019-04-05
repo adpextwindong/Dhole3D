@@ -44,21 +44,35 @@ impl<'a> renderer<'a> {
     }
 
     //returns last frame info
-    pub fn draw_frame(&mut self,mut debug_canvas:&mut Canvas<Window>,texture: &mut Texture,gs : &GameState, changed_frame :  bool){
+    pub fn draw_frame(&mut self,mut debug_canvas:&mut Canvas<Window>,texture: &mut Texture,gs : &mut GameState, changed_frame :  bool){
 
         {
             let mut changed_frame_inner = changed_frame;
             let mut col_dists_and_colors : Vec<(f32, Color)> = Vec::with_capacity(SCREEN_SIZE_X as usize);
             'raycasting: for x in 0..SCREEN_SIZE_X as usize {
-                let cameraX = ((2.0 * x as f32) / SCREEN_SIZE_X as f32) - 1.0;
+                if changed_frame_inner {
+                    println!("Ray {:?}", x);
+                }
 
-                let ray: Ray2D = Ray2D::new(gs.p.dir, gs.camera_plane, cameraX);
+                if let Some(insp_i) = gs.dflags.inspect_ray{
+                    changed_frame_inner = x == insp_i;
+                }
+
+
+                let cameraX = ((2.0 * x as f32) / SCREEN_SIZE_X as f32) - 1.0;
+                let ray: Ray2D = Ray2D::new(gs.p.dir, gs.camera_plane, cameraX, x);
+                if let Some(insp_i) = gs.dflags.inspect_ray{
+                    if x == insp_i{
+                        gs.dflags.inspect_ray_info = Some(ray);
+                    }
+                }
+
                 let possible_wall: Option<(Wall, Vec2<f32>)> = find_wall_and_distance(gs, ray, changed_frame_inner);
                 //TODO remove
-                changed_frame_inner = false;
+//                changed_frame_inner = false;
 
                 if let Some((sampled_wall, dist)) = possible_wall {
-                    //use rayfishfix???
+                    //Ray Fish Eye Fix
                     let ang = ray.dir.normalized().angle();
                     let fixed_dist : f32 = Vec2{
                         x: (dist.x * f32::cos(ang)) - (dist.y * f32::sin(ang)),
