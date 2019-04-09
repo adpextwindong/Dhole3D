@@ -1,4 +1,5 @@
 use renderer::vector::Vec2;
+use world::WORLD_CELL_SIZE;
 
 /// Represents a ray for raycasting
 #[derive(Copy, Clone, Debug)]
@@ -18,6 +19,21 @@ impl Ray2D {
             }.normalized(),
             ray_number
         }
+    }
+
+    pub fn gen_dda_steps(self) -> (f32,f32) {
+        // X + 1 , A + ystep
+        let mut scaled_dir_steps = self.dir.normalized().scale(WORLD_CELL_SIZE as f32);
+
+        if scaled_dir_steps.x.is_infinite(){
+            scaled_dir_steps.x = WORLD_CELL_SIZE as f32;
+        }
+
+        if scaled_dir_steps.y.is_infinite(){
+            scaled_dir_steps.y = WORLD_CELL_SIZE as f32;
+        }
+
+        (scaled_dir_steps.x, scaled_dir_steps.y)
     }
 
     pub fn get_dir(self) -> Vec2<f32> {

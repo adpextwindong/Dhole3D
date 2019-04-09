@@ -23,7 +23,7 @@ use world::WORLD_CELL_SIZE;
 use renderer::vector::rotate_clockwise;
 use renderer::vector::rotate_counter_clockwise;
 use renderer::vector::Vec2;
-use renderer::dda::find_wall_and_distance;
+use renderer::dda::caster;
 use renderer::ray2D::Ray2D;
 use world::GameState;
 use world::DebugWindowFlags;
@@ -51,14 +51,13 @@ impl<'a> renderer<'a> {
         'raycasting: for x in 0..SCREEN_SIZE_X as usize {
             let cameraX = ((2.0 * x as f32) / SCREEN_SIZE_X as f32) - 1.0;
             let ray: Ray2D = Ray2D::new(gs.p.dir, gs.camera_plane, cameraX, x);
+
             if let Some(insp_i) = dflags.inspect_ray{
                 changed_frame_inner = x == insp_i;
                 dflags.inspect_ray_info = Some(ray);
             }
 
-            let possible_wall: Option<(Wall, Vec2<f32>)> = find_wall_and_distance(gs, ray, changed_frame_inner, dflags);
-            //TODO remove
-//                changed_frame_inner = false;
+            let possible_wall: Option<(Wall, Vec2<f32>)> = dda::caster::new(gs, ray, changed_frame_inner, dflags).find_wall_and_distance();
 
             if let Some((sampled_wall, dist)) = possible_wall {
                 //Ray Fish Eye Fix

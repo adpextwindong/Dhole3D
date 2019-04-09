@@ -102,16 +102,11 @@ pub fn main() {
         //RENDERER
         {
             let mut game_renderer = renderer::renderer::new(&mut canvas);
-            //fixme mutability of GS
             game_renderer.cast_rays(&gs, debug_on, &mut dflags);
-
-
+            game_renderer.draw_frame(&mut texture);
             if dflags.distsView {
                 debug_window::debug_draw_dists(&mut debug_canvas, &game_renderer.ray_results);
             }
-
-
-            game_renderer.draw_frame(&mut texture);
         }
         //RENDERER
         //========
@@ -120,10 +115,11 @@ pub fn main() {
             debug_window::debug_draw_world(&mut debug_canvas, &gs, &dflags);
         }
 
+        debug_on = false;
         if dflags.inspect_ray.is_some(){
             dflags.inspect_ray = None;
             //gs.dflags.inspect_ray_info = None;
-            debug_on = false;
+
         }
 
         if let Some(event) = handle_events(event_pump, &mut gs, &mut debug_on, &mut dflags) {
