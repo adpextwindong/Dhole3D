@@ -6,7 +6,7 @@ build = "build.rs"
 rustflags = ["-C target-cpu=skylake"]
 
 [dependencies]
-sdl2 = "0.31.0"
+sdl2 = "0.34.0"
 piston2d-graphics = "0.23.0"
 pistoncore-window = "0.30.0"
 pistoncore-input = "0.20.0"

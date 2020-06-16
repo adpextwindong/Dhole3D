@@ -1,29 +1,55 @@
 #!/bin/sh
 
-if [ -e SDL2-devel-2.0.8-mingw.tar.gz ] #&& [ -e SDL2-devel-2.0.8-VC.zip ]
+VERSION="2.0.12"
+
+MINGW_FILE="SDL2-devel-${VERSION}-mingw.tar.gz"
+VC_FILE="SDL2-devel-${VERSION}-VC.zip"
+
+if [ -e $MINGW_FILE ] || [ -e $VC_FILE ]
 then
-    rm -rf SDL2-2.0.8/
-    rm -rf gnu-mingw
-    rm -rf msvc
-    tar xzf SDL2-devel-2.0.8-mingw.tar.gz
-    #unzip -f SDL2-devel-2.0.8-VC.zip
 
-    mkdir -p gnu-mingw/dll/32
-    mkdir -p gnu-mingw/lib/32
-    
-    mkdir -p gnu-mingw/dll/64
-    mkdir -p gnu-mingw/lib/64
+    if [ -e $MINGW_FILE ]
+    then
+        rm -rf SDL2-${VERSION}/
+        tar xzf $MINGW_FILE
 
-    cp SDL2-2.0.8/i686-w64-mingw32/bin/* gnu-mingw/dll/32/
-    cp SDL2-2.0.8/i686-w64-mingw32/lib/* gnu-mingw/lib/32/
+        rm -rf gnu-mingw
+        mkdir -p gnu-mingw/dll/32
+        mkdir -p gnu-mingw/lib/32
 
-    cp SDL2-2.0.8/x86_64-w64-mingw32/bin/* gnu-mingw/dll/64/
-    cp SDL2-2.0.8/x86_64-w64-mingw32/lib/* gnu-mingw/lib/64/
+        mkdir -p gnu-mingw/dll/64
+        mkdir -p gnu-mingw/lib/64
 
-    #mkdir -p msvc/dll/32
-    #mkdir -p msvc/dll/64
-    #mkdir -p msvc/lib/32
-    #mkdir -p msvc/lib/64
+        cp -r SDL2-${VERSION}/i686-w64-mingw32/bin/* gnu-mingw/dll/32/
+        cp -r SDL2-${VERSION}/i686-w64-mingw32/lib/* gnu-mingw/lib/32/
+
+        cp -r SDL2-${VERSION}/x86_64-w64-mingw32/bin/* gnu-mingw/dll/64/
+        cp -r SDL2-${VERSION}/x86_64-w64-mingw32/lib/* gnu-mingw/lib/64/
+
+
+    fi
+
+    if [ -e $VC_FILE ]
+    then
+        echo "Handling VC files"
+
+        rm -rf SDL2-${VERSION}/
+        unzip $VC_FILE
+
+        rm -rf msvc
+        mkdir -p msvc/dll/32
+        mkdir -p msvc/lib/32
+
+        mkdir -p msvc/dll/64
+        mkdir -p msvc/lib/64
+
+        cp -r SDL2-${VERSION}/lib/x64/SDL2.dll msvc/dll/64
+        cp -r SDL2-${VERSION}/lib/x86/SDL2.dll msvc/dll/32
+
+        cp -r SDL2-${VERSION}/lib/x64/SDL2.lib msvc/lib/64
+        cp -r SDL2-${VERSION}/lib/x86/SDL2.lib msvc/lib/32
+
+    fi
 else
-    echo 'SDL2-devel-2.0.8-mingw.tar.gz required.'
+    echo "Devel tar/zips not found"
 fi
